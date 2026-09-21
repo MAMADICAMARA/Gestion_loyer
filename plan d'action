@@ -1,0 +1,180 @@
+# Feuille de route d'implémentation — Géra (PERN)
+
+## Contexte
+
+L'authentification fonctionne de bout en bout (login → JWT → `/dashboard` de
+vérification) sur une base réelle (`GestionLocative`, 36 tables, RLS testée).
+Il faut maintenant construire le vrai produit, module par module, en
+respectant l'ordre de dépendance imposé par le schéma : on ne peut pas créer
+un contrat sans local et locataire, pas de facture sans contrat, pas
+d'impayé sans facture. Chaque phase livre une **tranche verticale complète**
+(API + interface + test réel dans le navigateur), comme on vient de le faire
+pour la connexion — jamais du code qui ne peut pas être vérifié tout de
+suite.
+
+Le détail complet (API + écrans) n'est donné que pour la **Phase 1**,
+prochaine étape immédiate. Les phases suivantes sont volontairement
+esquissées à gros grain : leur détail sera écrit au moment d'y arriver, une
+fois la précédente vérifiée et les choix d'implémentation de la phase 1
+stabilisés (conventions de route, de validation, de composants d'écran).
+
+## Vue d'ensemble des phases
+
+| # | Phase | Débloque |
+|---|---|---|
+| 0 | ~~Authentification~~ | **Fait** |
+| 1 | Patrimoine — Propriétaires, Propriétés, Locaux | Socle sur lequel tout le reste s'appuie |
+| 2 | Locataires | Nécessaire pour les contrats |
+| 3 | Contrats (+ garants, révisions de loyer) | Le nœud central du schéma |
+| 4 | Facturation & Paiements (+ `payment_methods`) | Ferme la boucle centrale |
+| 5 | Impayés & Tableau de bord | Rend le produit utile au quotidien |
+| 6 | Portail propriétaire & Commission d'agence | Complète le MVP (Partie 7 du cahier des charges) |
+
+---
+
+## Phase 1 — Patrimoine : Propriétaires, Propriétés, Locaux
+
+### Ce qu'on construit
+
+Le premier module métier réel : Ibrahima peut créer un propriétaire, une
+propriété, et découper cette propriété en locaux — exactement le scénario 1
+du document de scénarios (§01, La boucle centrale, étapes 1-2).
+
+### 1. Schéma — un petit patch avant de commencer
+
+`owners` porte `organization_id` mais n'a **aucune policy RLS** dans
+`schema.sql` actuel (contrairement à `properties`/`units`) — c'est un trou
+de sécurité réel, pas juste une préférence. On l'ajoute :
+
+```sql
+ALTER TABLE owners ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON owners USING (organization_id = current_org_id());
+```
+
+À appliquer sur `GestionLocative` via `psql`, et à ajouter dans
+`schema.sql` (racine du projet) pour que le fichier reste la référence
+exécutable à jour.
+
+### 2. API (`api/`)
+
+**Prisma** (`api/prisma/schema.prisma`) — ajouter les modèles `Owner`,
+`Property`, `Unit`, mappés 1:1 sur les colonnes existantes (même pattern que
+`Organization`/`User` déjà en place : `@map`/`@@map`, types `@db.Uuid` /
+`@db.VarChar` / `@db.Numeric`). Puis `npx prisma generate`.
+
+**Middleware** — ajouter `requireRole(...roles)` dans
+`api/src/middleware/auth.ts` (à côté de `requireAuth`) : lit `req.auth.role`
+(déjà posé par `requireAuth`), 403 si non autorisé. Utilisé pour réserver
+les écritures à `owner`/`admin`/`manager` (cf. matrice de permissions,
+Partie 2 du cahier des charges — `agent` reste lecture seule,
+`owner_viewer` est hors périmètre de ce module, traité en Phase 6).
+
+**Routes** — nouveaux fichiers suivant le pattern de
+`api/src/routes/auth.ts` (Router Express, validation `zod`, réponses
+`{code, message}` sur erreur) :
+
+- `api/src/routes/owners.ts`
+  - `GET /api/owners` — liste (tout rôle authentifié)
+  - `POST /api/owners` — `{fullName, phone?, email?}` (owner/admin/manager)
+- `api/src/routes/properties.ts`
+  - `GET /api/properties` — liste avec compte de locaux (occupés/total) via agrégation Prisma
+  - `POST /api/properties` — `{ownerId, name, propertyType, address?, city?, district?, description?}`
+  - `GET /api/properties/:id` — détail, `include: { units: true }`
+  - `PATCH /api/properties/:id` — mise à jour partielle
+  - `DELETE /api/properties/:id` — suppression logique (`deleted_at = now()`, jamais de `DELETE` SQL — cf. E0 du cahier des charges)
+- `api/src/routes/units.ts`
+  - `GET /api/properties/:propertyId/units` — liste
+  - `POST /api/properties/:propertyId/units` — `{number, unitType, floor?, areaSqm?, rentAmount, depositAmount?, description?}`
+  - `PATCH /api/units/:id` — mise à jour (y compris changement de `status`)
+
+**Toutes** les requêtes sur `owners`/`properties`/`units` passent par
+`withOrgContext(req.auth.organizationId, tx => ...)`
+(`api/src/lib/withOrgContext.ts`, déjà écrit et utilisé nulle part encore —
+c'est son premier vrai usage) : c'est le pattern RLS validé, pas un choix à
+reconsidérer.
+
+Monter les 3 routers dans `api/src/index.ts` :
+`app.use("/api/owners", requireAuth, ownersRouter)`, etc.
+
+### 3. Web (`web/`)
+
+**Coquille applicative** — remplacer la page `/dashboard` autonome par un
+groupe de routes authentifiées avec layout partagé :
+
+- `web/src/app/(app)/layout.tsx` — garde d'authentification côté client
+  (même logique que `dashboard/page.tsx` actuel : vérifie
+  `sessionStorage`, appelle `/api/auth/me`, redirige vers `/login` sinon) +
+  sidebar/topbar reprenant le système de design déjà posé dans
+  `globals.css` (`bg-laterite`, `text-ink`, `border-line`...) et le
+  langage visuel du dashboard web de `Maquette-plateforme-web-mobile.pdf`
+  (sidebar sombre, item actif souligné latérite, avatar+rôle en bas).
+  Items de nav pour l'instant : Tableau de bord, Propriétés (Locataires/
+  Contrats/Paiements arrivent aux phases suivantes, affichés mais inactifs
+  ou simplement absents jusque-là).
+- `web/src/app/(app)/dashboard/page.tsx` — contenu actuel de
+  `dashboard/page.tsx` déplacé ici (le vrai tableau de bord avec KPI vient
+  en Phase 5).
+- `web/src/app/(app)/properties/page.tsx` — liste des propriétés (cartes,
+  cf. écran "Propriétés & locaux" de la maquette), bouton "Ajouter un
+  bien".
+- `web/src/app/(app)/properties/new/page.tsx` — formulaire de création
+  (sélection/création rapide de propriétaire + champs propriété).
+- `web/src/app/(app)/properties/[id]/page.tsx` — détail : infos propriété
+  + table des locaux + formulaire d'ajout de local inline.
+
+**Client API** — étendre `web/src/lib/api.ts` (même pattern que `login()` :
+fonctions typées, `ApiError`) avec `listProperties`, `createProperty`,
+`getProperty`, `createUnit`, etc., toutes passant `Authorization: Bearer
+<token>` lu depuis `sessionStorage`.
+
+### Vérification
+
+1. `npx prisma generate` sans erreur, `npx tsc --noEmit` propre côté `api/`.
+2. Créer un propriétaire, une propriété, deux locaux via l'interface —
+   vérifier en base (`psql -d GestionLocative -c "SELECT ... FROM properties"`)
+   que `organization_id` est bien celui d'Ibrahima.
+3. Créer un deuxième compte dans une **autre** organisation (comme pour le
+   test RLS déjà fait sur `schema.sql`) et vérifier via l'API qu'il ne voit
+   pas les propriétés de Horizon Immobilier — preuve que `withOrgContext`
+   fonctionne en conditions réelles, pas seulement en théorie SQL.
+4. Screenshot de la page `/properties` (comme fait pour `/login`) pour
+   confirmer le rendu.
+
+---
+
+## Phase 2 — Locataires
+
+Fiche locataire (`tenants`, déjà en base) : liste, création, détail. Même
+pattern exact que Phase 1 (route + page + `withOrgContext`). Pas de
+dépendance nouvelle à trancher — extension directe des conventions posées
+en Phase 1.
+
+## Phase 3 — Contrats
+
+Le nœud central : lie `unit_id` + `tenant_id`. Règle métier à coder : à la
+création d'un contrat actif, le `unit.status` passe à `occupied` (et
+inversement à la résiliation) — actuellement seulement une contrainte
+documentée (§29 du cahier des charges), pas encore appliquée par trigger ni
+par code. Décision à prendre à ce moment-là : trigger SQL ou logique
+applicative dans la route. Inclut `guarantors` (garants, A1) et
+`rent_revisions` (A11) comme sous-ressources du contrat.
+
+## Phase 4 — Facturation & Paiements
+
+Génération de factures (`invoices`) pour un contrat actif, enregistrement
+de paiements (`payments`), calcul des pénalités (`late_fee_rules`, A5).
+C'est ici qu'on tranche et qu'on ajoute `payment_methods` (décidé en
+attente, cf. registre des décisions du cahier des charges v3.0) plutôt que
+de garder le `varchar` codé en dur.
+
+## Phase 5 — Impayés & Tableau de bord
+
+Vue agrégée des factures en retard (aging buckets, comme dans la maquette)
++ vrai tableau de bord avec KPI (remplace le contenu actuel de
+`(app)/dashboard/page.tsx`).
+
+## Phase 6 — Portail propriétaire & Commission d'agence
+
+`agency_commission_rules`, `owner_payouts`, rôle `owner_viewer` pleinement
+scopé (portail séparé, thème indigo comme dans la maquette). Complète le
+périmètre MVP tel que défini en Partie 7 du cahier des charges v3.0.

@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Maquette — Plateforme de gestion locative</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,340;9..144,480;9..144,600;9..144,900&family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  *{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  @page{ size: A4 landscape; margin: 0; }
+
+  :root{
+    /* ---- palette : terre de latérite + indigo boubou + or de savane ---- */
+    --ground:     #18130F;   /* fond de présentation, noir chaud */
+    --ground-2:   #211A15;   /* panneaux surélevés sur fond sombre */
+    --ground-3:   #2A2119;
+    --hair-dark:  rgba(243,232,219,.14);
+
+    --paper:      #FBF8F3;   /* fond des écrans produit (pas blanc pur) */
+    --paper-2:    #F3ECE1;
+    --paper-3:    #EAE1D2;
+    --ink:        #241C14;   /* texte sur paper */
+    --sub:        #766A5C;   /* texte secondaire sur paper */
+    --line:       #E3D9C8;
+
+    --text-dark:  #F5EEE3;   /* texte sur fond sombre */
+    --sub-dark:   #BBA995;
+
+    --laterite:   #C1502E;
+    --laterite-d: #8C3A21;
+    --laterite-t: #F3D9CD;   /* teinte très claire sur paper */
+    --indigo:     #2E3F6E;
+    --indigo-t:   #DEE3F0;
+    --gold:       #C99A3E;
+    --gold-t:     #F3E6C6;
+
+    --success:    #1F7A5C;
+    --success-t:  #D9EEE5;
+    --warning:    #B08324;
+    --warning-t:  #F3E7C9;
+    --critical:   #B33951;
+    --critical-t: #F5DEE3;
+
+    --f-display: "Fraunces", Georgia, "Cambria", serif;
+    --f-body:    "Public Sans", "Segoe UI", Arial, sans-serif;
+    --f-mono:    "IBM Plex Mono", "Consolas", monospace;
+  }
+
+  html,body{ margin:0; padding:0; background:var(--ground); color:var(--text-dark); font-family:var(--f-body); }
+  h1,h2,h3,h4{ margin:0; font-family:var(--f-display); text-wrap:balance; }
+  p{ margin:0; }
+  .num{ font-variant-numeric:tabular-nums; font-family:var(--f-mono); }
+
+  /* ================= STAGE (une page = un écran de présentation) ================= */
+  .stage{ width:297mm; height:210mm; position:relative; overflow:hidden;
+    page-break-after:always; background:var(--ground);
+    padding:11mm 13mm; display:flex; flex-direction:column; }
+  .stage:last-child{ page-break-after:auto; }
+
+  .stage::before{ /* texture grain très subtile en fond */
+    content:""; position:absolute; inset:0; pointer-events:none; opacity:.5;
+    background:
+      radial-gradient(ellipse 700px 420px at 88% -8%, rgba(193,80,46,.16), transparent 60%),
+      radial-gradient(ellipse 600px 500px at -6% 108%, rgba(46,63,110,.20), transparent 60%);
+  }
+
+  .kicker{ font-family:var(--f-mono); font-size:8.4pt; letter-spacing:2.2px; text-transform:uppercase;
+    color:var(--laterite); font-weight:600; display:flex; align-items:center; gap:8px; }
+  .kicker .line{ width:22px; height:1px; background:var(--laterite); }
+
+  .foot{ position:absolute; left:13mm; right:13mm; bottom:7mm; display:flex; justify-content:space-between;
+    font-family:var(--f-mono); font-size:7.4pt; color:var(--sub-dark); letter-spacing:.4px;
+    border-top:1px solid var(--hair-dark); padding-top:4mm; z-index:2; }
+
+  .icon{ width:1em; height:1em; display:inline-block; vertical-align:-0.15em; stroke:currentColor; fill:none;
+    stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+
+  /* ================= COVER ================= */
+  .cover{ justify-content:space-between; }
+  .cover-top{ display:flex; justify-content:space-between; align-items:flex-start; }
+  .brandmark{ display:flex; align-items:center; gap:9px; }
+  .brandmark .sq{ width:28px; height:28px; border-radius:7px; background:var(--laterite);
+    display:flex; align-items:center; justify-content:center; color:#1A1210; font-family:var(--f-display);
+    font-weight:900; font-size:14pt; }
+  .brandmark .word{ font-family:var(--f-mono); font-size:9pt; letter-spacing:1.5px; color:var(--sub-dark); }
+  .cover-tag{ font-family:var(--f-mono); font-size:8.4pt; color:var(--sub-dark); text-align:right; line-height:1.6; }
+
+  .cover-mid{ display:flex; align-items:flex-end; justify-content:space-between; gap:24px; }
+  .cover h1{ font-size:58pt; line-height:0.98; font-weight:340; color:var(--text-dark); font-style:italic; }
+  .cover h1 b{ font-style:normal; font-weight:900; color:var(--laterite); display:block; }
+  .cover-sub{ max-width:88mm; font-size:11pt; color:var(--sub-dark); line-height:1.55; margin-top:14px; }
+
+  .cover-stack{ position:relative; width:118mm; height:118mm; flex:0 0 auto; }
+  .cover-card{ position:absolute; border-radius:10px; box-shadow:0 24px 50px -14px rgba(0,0,0,.6); overflow:hidden; border:1px solid rgba(0,0,0,.08); }
+  .cover-card .bar{ height:9px; background:var(--paper-3); display:flex; align-items:center; gap:3px; padding:0 6px; }
+  .cover-card .bar i{ width:3.5px; height:3.5px; border-radius:50%; background:#D8CBB6; }
+  .cover-card .body{ background:var(--paper); height:calc(100% - 9px); padding:10px; }
+
+  .cover-bottom{ display:flex; justify-content:space-between; align-items:flex-end; }
+  .chiplist{ display:flex; gap:7px; flex-wrap:wrap; }
+  .chip{ font-family:var(--f-mono); font-size:7.6pt; letter-spacing:.3px; color:var(--text-dark);
+    border:1px solid var(--hair-dark); border-radius:20px; padding:5px 11px; background:rgba(255,255,255,.03); }
+  .cover-meta{ text-align:right; font-family:var(--f-mono); font-size:8pt; color:var(--sub-dark); line-height:1.7; }
+
+  /* ================= SECTION DIVIDER ================= */
+  .divider{ justify-content:center; }
+  .divider .divnum{ font-family:var(--f-mono); font-size:11pt; color:var(--laterite); letter-spacing:3px; }
+  .divider h2{ font-size:42pt; color:var(--text-dark); font-weight:340; font-style:italic; margin-top:6px; max-width:200mm; }
+  .divider h2 b{ font-style:normal; font-weight:900; color:var(--laterite); }
+  .divider .dsub{ font-size:11.5pt; color:var(--sub-dark); max-width:150mm; margin-top:12px; line-height:1.6; }
+  .divider .dlist{ display:flex; gap:10mm; margin-top:22px; }
+  .divider .dlist .it{ font-family:var(--f-mono); font-size:8pt; color:var(--sub-dark); border-top:2px solid var(--laterite); padding-top:6px; width:38mm; }
+  .divider .dlist .it b{ display:block; color:var(--text-dark); font-family:var(--f-body); font-size:9pt; font-weight:700; margin-bottom:3px; }
+
+  /* ================= DESIGN SYSTEM PAGE ================= */
+  .sys-grid{ display:grid; grid-template-columns:1.1fr 1fr; gap:9mm; margin-top:8mm; flex:1; min-height:0; }
+  .sys-block{ background:var(--ground-2); border:1px solid var(--hair-dark); border-radius:10px; padding:8mm; }
+  .sys-block h3{ font-family:var(--f-mono); font-size:8pt; letter-spacing:1.5px; text-transform:uppercase; color:var(--gold); margin-bottom:6mm; }
+  .swatches{ display:grid; grid-template-columns:repeat(3,1fr); gap:5mm; }
+  .swatch .sq2{ height:19mm; border-radius:7px; margin-bottom:2.5mm; border:1px solid rgba(0,0,0,.15); }
+  .swatch .nm{ font-size:8.6pt; font-weight:700; color:var(--text-dark); }
+  .swatch .hx{ font-family:var(--f-mono); font-size:7.4pt; color:var(--sub-dark); }
+  .type-spec{ display:flex; flex-direction:column; gap:7mm; }
+  .type-row .lbl{ font-family:var(--f-mono); font-size:7.4pt; color:var(--sub-dark); letter-spacing:1px; text-transform:uppercase; margin-bottom:2mm; }
+  .type-row .sample.disp{ font-family:var(--f-display); font-size:23pt; font-weight:480; font-style:italic; color:var(--text-dark); }
+  .type-row .sample.body{ font-family:var(--f-body); font-size:12.5pt; font-weight:600; color:var(--text-dark); }
+  .type-row .sample.mono{ font-family:var(--f-mono); font-size:12.5pt; color:var(--gold); }
+  .comp-row{ display:flex; gap:6mm; align-items:center; flex-wrap:wrap; margin-top:3mm; }
+
+  /* ================= BUTTONS / PILLS (utilisés DANS les écrans produit) ================= */
+  .btn{ font-family:var(--f-body); font-weight:700; font-size:9.6px; border-radius:7px; padding:8px 14px;
+    display:inline-flex; align-items:center; gap:6px; border:1px solid transparent; cursor:default; }
+  .btn-primary{ background:var(--laterite); color:#fff; }
+  .btn-outline{ background:transparent; border-color:var(--line); color:var(--ink); }
+  .btn-ghost{ background:var(--paper-3); color:var(--ink); }
+
+  .pill{ font-size:8.6px; font-weight:700; padding:3.5px 9px; border-radius:20px; display:inline-flex; align-items:center; gap:4px; font-family:var(--f-body); }
+  .pill-success{ background:var(--success-t); color:var(--success); }
+  .pill-warning{ background:var(--warning-t); color:var(--warning); }
+  .pill-critical{ background:var(--critical-t); color:var(--critical); }
+  .pill-info{ background:var(--indigo-t); color:var(--indigo); }
+  .pill-neutral{ background:var(--paper-3); color:var(--sub); }
+  .pill .dot{ width:5px; height:5px; border-radius:50%; background:currentColor; }
+
+  /* ================= SCREEN STAGE LAYOUT (chrome + frame + rationale) ================= */
+  .screen-head{ display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:6mm; }
+  .screen-head h2{ font-size:23pt; color:var(--text-dark); font-weight:480; font-style:italic; }
+  .screen-head h2 b{ font-style:normal; font-weight:900; color:var(--laterite); }
+  .refbadge{ font-family:var(--f-mono); font-size:7.6pt; color:var(--ground); background:var(--gold); border-radius:5px; padding:4px 8px; font-weight:700; }
+
+  .screen-body{ flex:1; display:grid; grid-template-columns:1fr 58mm; gap:9mm; min-height:0; }
+  .persona-line{ display:flex; align-items:center; gap:7px; font-size:8.8pt; color:var(--sub-dark); margin-bottom:5mm; font-style:italic; }
+  .persona-line .av{ width:20px; height:20px; border-radius:50%; background:var(--ground-3); border:1px solid var(--hair-dark);
+    display:flex; align-items:center; justify-content:center; font-family:var(--f-body); font-weight:800; font-size:8pt; color:var(--gold); flex:0 0 auto; }
+  .principles{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:5mm; }
+  .principles li{ display:flex; gap:7px; font-size:9pt; color:var(--text-dark); line-height:1.45; }
+  .principles li .ic{ color:var(--laterite); flex:0 0 auto; margin-top:1px; }
+  .principles li b{ display:block; font-size:9.2pt; margin-bottom:1px; }
+  .principles li span.d{ color:var(--sub-dark); }
+
+  /* ================= BROWSER FRAME ================= */
+  .browser{ background:var(--paper); border-radius:10px; overflow:hidden; height:100%;
+    box-shadow:0 30px 60px -18px rgba(0,0,0,.65), 0 0 0 1px rgba(0,0,0,.25); display:flex; flex-direction:column; }
+  .browser-bar{ background:var(--paper-3); padding:6px 10px; display:flex; align-items:center; gap:9px; flex:0 0 auto; }
+  .browser-bar .dots{ display:flex; gap:4px; }
+  .browser-bar .dots i{ width:7px; height:7px; border-radius:50%; background:#D8CBB6; }
+  .browser-bar .addr{ flex:1; background:var(--paper); border-radius:5px; padding:4px 10px; font-family:var(--f-mono);
+    font-size:7.6px; color:var(--sub); display:flex; align-items:center; gap:5px; }
+  .browser-bar .addr .icon{ width:9px; height:9px; color:var(--success); }
+
+  .app{ flex:1; display:flex; min-height:0; }
+  .app-sidebar{ width:47mm; background:var(--ground); color:var(--text-dark); flex:0 0 auto; display:flex; flex-direction:column; padding:5mm 4mm; }
+  .app-logo{ display:flex; align-items:center; gap:7px; padding:0 2mm 5mm 2mm; }
+  .app-logo .sq{ width:17px; height:17px; border-radius:5px; background:var(--laterite); }
+  .app-logo span{ font-family:var(--f-mono); font-size:8px; letter-spacing:1px; color:var(--sub-dark); }
+  .navlist{ display:flex; flex-direction:column; gap:1mm; flex:1; }
+  .navitem{ display:flex; align-items:center; gap:7px; padding:6px 6px; border-radius:6px; font-size:8.6px; font-weight:600; color:var(--sub-dark); }
+  .navitem .icon{ width:12px; height:12px; }
+  .navitem.active{ background:rgba(193,80,46,.18); color:#fff; }
+  .navitem.active .icon{ color:var(--laterite); }
+  .navfoot{ display:flex; align-items:center; gap:7px; padding-top:4mm; border-top:1px solid var(--hair-dark); margin-top:3mm; }
+  .navfoot .av{ width:19px; height:19px; border-radius:50%; background:var(--gold); flex:0 0 auto; display:flex; align-items:center; justify-content:center; font-size:7.5px; font-weight:800; color:#1A1210; }
+  .navfoot .who{ font-size:7.8px; line-height:1.3; }
+  .navfoot .who b{ display:block; color:var(--text-dark); font-size:8px; }
+  .navfoot .who span{ color:var(--sub-dark); }
+
+  .app-main{ flex:1; background:var(--paper); padding:5mm 6mm; overflow:hidden; display:flex; flex-direction:column; min-width:0; }
+  .app-topbar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:5mm; flex:0 0 auto; }
+  .app-topbar h3{ font-family:var(--f-body); font-size:12.5px; font-weight:800; color:var(--ink); }
+  .app-topbar .sub{ font-size:8px; color:var(--sub); margin-top:1px; }
+  .topbar-actions{ display:flex; align-items:center; gap:6px; }
+  .searchbox{ display:flex; align-items:center; gap:5px; background:var(--paper-2); border:1px solid var(--line); border-radius:7px; padding:5px 8px; font-size:8px; color:var(--sub); }
+  .searchbox .icon{ width:10px; height:10px; }
+  .iconbtn{ width:24px; height:24px; border-radius:7px; background:var(--paper-2); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; color:var(--ink); position:relative; }
+  .iconbtn .icon{ width:11px; height:11px; }
+  .iconbtn .bubble{ position:absolute; top:-3px; right:-3px; width:9px; height:9px; border-radius:50%; background:var(--laterite); color:#fff; font-size:5.6px; display:flex; align-items:center; justify-content:center; font-weight:800; }
+
+  /* KPI tiles */
+  .kpi-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:4mm; margin-bottom:5mm; flex:0 0 auto; }
+  .kpi{ background:#fff; border:1px solid var(--line); border-radius:8px; padding:4mm; }
+  .kpi .lbl{ font-size:7.4px; color:var(--sub); font-weight:700; text-transform:uppercase; letter-spacing:.4px; }
+  .kpi .val{ font-family:var(--f-mono); font-size:15.5px; font-weight:600; color:var(--ink); margin-top:2mm; }
+  .kpi .delta{ font-size:7.4px; margin-top:1.5mm; display:flex; align-items:center; gap:3px; font-weight:700; }
+  .kpi .delta.up{ color:var(--success); } .kpi .delta.down{ color:var(--critical); }
+
+  .panel{ background:#fff; border:1px solid var(--line); border-radius:8px; padding:4mm; }
+  .panel h4{ font-family:var(--f-body); font-size:9.5px; font-weight:800; color:var(--ink); margin-bottom:1mm; }
+  .panel .cap{ font-size:7.4px; color:var(--sub); margin-bottom:3mm; }
+  .content-grid{ display:grid; grid-template-columns:1.5fr 1fr; gap:4mm; flex:1; min-height:0; }
+
+  /* data table */
+  table.dt{ width:100%; border-collapse:collapse; font-size:7.8px; }
+  table.dt th{ text-align:left; font-size:6.8px; text-transform:uppercase; letter-spacing:.4px; color:var(--sub); font-weight:700; padding:0 6px 5px 0; border-bottom:1px solid var(--line); }
+  table.dt td{ padding:6px 6px 6px 0; border-bottom:1px solid var(--paper-2); vertical-align:middle; color:var(--ink); }
+  table.dt tr:last-child td{ border-bottom:none; }
+  .tname{ display:flex; align-items:center; gap:6px; }
+  .tavatar{ width:16px; height:16px; border-radius:50%; background:var(--indigo-t); color:var(--indigo); display:flex; align-items:center; justify-content:center; font-size:6.4px; font-weight:800; flex:0 0 auto; }
+
+  .activity{ display:flex; flex-direction:column; gap:3mm; }
+  .aitem{ display:flex; gap:6px; font-size:7.6px; }
+  .aitem .dotwrap{ display:flex; flex-direction:column; align-items:center; }
+  .aitem .adot{ width:6px; height:6px; border-radius:50%; margin-top:2px; }
+  .aitem .aline{ width:1px; flex:1; background:var(--line); margin-top:2px; }
+  .aitem b{ color:var(--ink); }
+  .aitem .atime{ color:var(--sub); font-family:var(--f-mono); font-size:6.6px; }
+
+  /* property cards */
+  .prop-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:4mm; flex:1; min-height:0; }
+  .prop-card{ background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden; display:flex; flex-direction:column; }
+  .prop-photo{ height:20mm; position:relative; display:flex; align-items:flex-end; padding:5px; }
+  .prop-photo .tag{ font-family:var(--f-mono); font-size:6px; color:rgba(255,255,255,.85); background:rgba(0,0,0,.28); padding:2px 5px; border-radius:4px; letter-spacing:.3px; }
+  .prop-info{ padding:3mm; flex:1; }
+  .prop-info h5{ font-family:var(--f-body); font-size:8.6px; font-weight:800; color:var(--ink); }
+  .prop-info .loc{ font-size:7px; color:var(--sub); margin-top:1px; display:flex; align-items:center; gap:3px; }
+  .prop-info .loc .icon{ width:8px; height:8px; }
+  .prop-stats{ display:flex; justify-content:space-between; margin-top:3mm; padding-top:2.5mm; border-top:1px solid var(--paper-2); }
+  .prop-stats .st{ text-align:center; }
+  .prop-stats .st b{ display:block; font-family:var(--f-mono); font-size:9px; color:var(--ink); }
+  .prop-stats .st span{ font-size:6px; color:var(--sub); text-transform:uppercase; }
+
+  /* Kanban */
+  .kanban{ flex:1; display:grid; grid-template-columns:repeat(4,1fr); gap:3.5mm; min-height:0; }
+  .kcol{ display:flex; flex-direction:column; gap:2.5mm; min-height:0; }
+  .kcol-head{ display:flex; justify-content:space-between; align-items:center; font-size:7.6px; font-weight:800; color:var(--ink); padding-bottom:2mm; border-bottom:2px solid var(--line); }
+  .kcol-head .ct{ background:var(--paper-2); border-radius:10px; padding:1px 6px; font-family:var(--f-mono); font-size:6.8px; }
+  .kcard{ background:#fff; border:1px solid var(--line); border-radius:7px; padding:2.5mm; font-size:7px; }
+  .kcard .t{ font-weight:800; color:var(--ink); margin-bottom:1.5mm; }
+  .kcard .m{ color:var(--sub); font-size:6.4px; margin-bottom:2mm; }
+  .kcard .foot2{ display:flex; justify-content:space-between; align-items:center; }
+  .kcard .vend{ display:flex; align-items:center; gap:3px; font-size:6.2px; color:var(--sub); }
+
+  /* pricing */
+  .price-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:3.5mm; flex:1; }
+  .price-card{ background:#fff; border:1px solid var(--line); border-radius:9px; padding:4mm; display:flex; flex-direction:column; }
+  .price-card.current{ border-color:var(--laterite); border-width:2px; position:relative; }
+  .price-card .badge2{ position:absolute; top:-8px; left:50%; transform:translateX(-50%); background:var(--laterite); color:#fff; font-size:6px; font-weight:800; padding:2px 8px; border-radius:10px; }
+  .price-card .pname{ font-size:9px; font-weight:800; color:var(--ink); }
+  .price-card .pprice{ font-family:var(--f-mono); font-size:14px; color:var(--ink); margin:2mm 0; }
+  .price-card .pprice span{ font-size:7px; color:var(--sub); font-family:var(--f-body); }
+  .price-card ul{ list-style:none; margin:2mm 0 0 0; padding:0; display:flex; flex-direction:column; gap:1.6mm; flex:1; }
+  .price-card li{ font-size:6.6px; color:var(--sub); display:flex; gap:4px; align-items:flex-start; }
+  .price-card li .icon{ width:8px; height:8px; color:var(--success); margin-top:1px; flex:0 0 auto; }
+
+  /* ================= PHONE FRAME ================= */
+  .phones-row{ flex:1; display:flex; gap:11mm; align-items:flex-start; justify-content:center; }
+  .phone-col{ display:flex; flex-direction:column; align-items:center; gap:5mm; }
+  .phone{ width:58mm; height:124mm; background:var(--ink); border-radius:13px; padding:2.6mm; box-shadow:0 30px 60px -16px rgba(0,0,0,.7); }
+  .phone-screen{ background:var(--paper); width:100%; height:100%; border-radius:9px; overflow:hidden; display:flex; flex-direction:column; position:relative; }
+  .phone-status{ display:flex; justify-content:space-between; align-items:center; padding:2.5mm 4mm 1mm 4mm; font-family:var(--f-mono); font-size:6.4px; color:var(--ink); flex:0 0 auto; }
+  .phone-status .icons{ display:flex; gap:3px; align-items:center; }
+  .phone-status .icon{ width:9px; height:9px; }
+  .phone-content{ flex:1; padding:2.5mm 4mm; min-height:0; overflow:hidden; }
+  .phone-tabbar{ display:flex; justify-content:space-around; padding:2mm 0 2.5mm 0; border-top:1px solid var(--line); flex:0 0 auto; }
+  .ptab{ display:flex; flex-direction:column; align-items:center; gap:1px; color:var(--sub); }
+  .ptab.active{ color:var(--laterite); }
+  .ptab .icon{ width:12px; height:12px; }
+  .ptab span{ font-size:5.4px; font-weight:700; }
+  .pcap{ text-align:center; }
+  .pcap h5{ font-size:9px; font-weight:800; color:var(--text-dark); font-family:var(--f-body); }
+  .pcap p{ font-size:7.6px; color:var(--sub-dark); margin-top:1.5mm; max-width:56mm; line-height:1.4; }
+
+  .offline-banner{ background:var(--warning-t); color:var(--warning); font-size:6.4px; font-weight:700; padding:2mm 3mm; border-radius:6px; display:flex; align-items:center; gap:4px; margin-bottom:2.5mm; }
+  .offline-banner .icon{ width:9px; height:9px; }
+  .phone-h1{ font-size:12px; font-weight:800; color:var(--ink); font-family:var(--f-body); }
+  .phone-h1 span{ display:block; font-size:7px; color:var(--sub); font-weight:600; margin-top:1px; }
+
+  .list-item{ display:flex; align-items:center; gap:6px; padding:2.2mm 0; border-bottom:1px solid var(--paper-2); }
+  .list-item .av2{ width:17px; height:17px; border-radius:50%; background:var(--indigo-t); color:var(--indigo); display:flex; align-items:center; justify-content:center; font-size:6.4px; font-weight:800; flex:0 0 auto; }
+  .list-item .mid{ flex:1; min-width:0; }
+  .list-item .mid b{ font-size:7.6px; color:var(--ink); display:block; }
+  .list-item .mid span{ font-size:6.4px; color:var(--sub); }
+  .list-item .end{ text-align:right; }
+
+  .keypad-amt{ text-align:center; padding:5mm 0 3mm 0; }
+  .keypad-amt .lbl{ font-size:6.6px; color:var(--sub); text-transform:uppercase; letter-spacing:.4px; }
+  .keypad-amt .amt{ font-family:var(--f-mono); font-size:19px; color:var(--ink); font-weight:600; margin-top:1.5mm; }
+  .method-row{ display:flex; gap:2.5mm; margin:3mm 0; }
+  .method{ flex:1; border:1.4px solid var(--line); border-radius:7px; padding:2.5mm 1mm; text-align:center; font-size:6px; font-weight:700; color:var(--sub); }
+  .method.sel{ border-color:var(--laterite); color:var(--laterite); background:var(--laterite-t); }
+  .keypad{ display:grid; grid-template-columns:repeat(3,1fr); gap:2mm; margin-top:2mm; }
+  .kkey{ text-align:center; padding:2mm 0; font-family:var(--f-mono); font-size:9px; color:var(--ink); background:var(--paper-2); border-radius:6px; }
+
+  .chip-row{ display:flex; gap:2mm; flex-wrap:wrap; margin:2.5mm 0; }
+  .pchip{ font-size:6px; font-weight:700; padding:2mm 3mm; border-radius:20px; border:1.3px solid var(--line); color:var(--sub); }
+  .pchip.sel{ background:var(--laterite); border-color:var(--laterite); color:#fff; }
+  .photo-box{ background:var(--paper-2); border:1.5px dashed var(--line); border-radius:7px; height:22mm; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; margin:2.5mm 0; }
+  .photo-box .icon{ width:16px; height:16px; color:var(--sub); }
+  .photo-box span{ font-size:6px; color:var(--sub); font-weight:600; }
+
+  .room-row{ display:flex; align-items:center; gap:5px; padding:2mm 0; border-bottom:1px solid var(--paper-2); }
+  .room-row .thumb{ width:14mm; height:10mm; border-radius:5px; flex:0 0 auto; }
+  .room-row .rmid{ flex:1; }
+  .room-row .rmid b{ font-size:7px; color:var(--ink); display:block; }
+  .rating-dots{ display:flex; gap:1.5px; margin-top:1px; }
+  .rating-dots i{ width:4px; height:4px; border-radius:50%; background:var(--paper-3); }
+  .rating-dots i.on{ background:var(--success); }
+
+  .chatbubble{ max-width:80%; padding:2.2mm 3mm; border-radius:10px; font-size:7px; line-height:1.4; margin-bottom:2.5mm; }
+  .chatbubble.in{ background:var(--paper-2); color:var(--ink); border-bottom-left-radius:3px; }
+  .chatbubble.out{ background:var(--success); color:#fff; margin-left:auto; border-bottom-right-radius:3px; }
+  .chat-time{ font-size:5.6px; color:var(--sub); text-align:center; margin:2mm 0; }
+
+  /* closing */
+  .recap-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:6mm; margin-top:8mm; flex:1; }
+  .recap{ background:var(--ground-2); border:1px solid var(--hair-dark); border-radius:10px; padding:6mm; }
+  .recap .icwrap{ width:30px; height:30px; border-radius:8px; background:rgba(193,80,46,.15); color:var(--laterite); display:flex; align-items:center; justify-content:center; margin-bottom:4mm; }
+  .recap .icwrap .icon{ width:15px; height:15px; }
+  .recap h4{ font-family:var(--f-body); font-size:10.5pt; font-weight:800; color:var(--text-dark); margin-bottom:2mm; }
+  .recap p{ font-size:8.6pt; color:var(--sub-dark); line-height:1.55; }
+</style>
+</head>
+<body>
+
+<!-- ============ ICON SPRITE ============ -->
+<svg style="display:none">
+<defs>
+<symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></symbol>
+<symbol id="i-building" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1"/><line x1="8" y1="7" x2="8" y2="7"/><line x1="12" y1="7" x2="12" y2="7"/><line x1="16" y1="7" x2="16" y2="7"/><rect x="7" y="6.3" width="1.6" height="1.6"/><rect x="11.2" y="6.3" width="1.6" height="1.6"/><rect x="15.4" y="6.3" width="1.6" height="1.6"/><rect x="7" y="10.3" width="1.6" height="1.6"/><rect x="11.2" y="10.3" width="1.6" height="1.6"/><rect x="15.4" y="10.3" width="1.6" height="1.6"/><rect x="10" y="15" width="4" height="6"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.3 2.5-5.6 5.5-5.6s5.5 2.3 5.5 5.6"/><circle cx="17" cy="8.5" r="2.4"/><path d="M15.2 14.9c2.6.2 4.8 2.3 4.8 5.1"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M6 2.5h9l4 4v15H6z"/><path d="M15 2.5v4h4"/><line x1="9" y1="12" x2="16" y2="12"/><line x1="9" y1="15.5" x2="16" y2="15.5"/><line x1="9" y1="19" x2="13" y2="19"/></symbol>
+<symbol id="i-card" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2"/><line x1="2.5" y1="9.5" x2="21.5" y2="9.5"/><line x1="5.5" y1="14.5" x2="10" y2="14.5"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 22 20H2z"/><line x1="12" y1="9.5" x2="12" y2="14"/><circle cx="12" cy="16.8" r="0.9" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.5 6.5a4 4 0 0 1 5.4 5.1l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a4 4 0 0 1-2.4-2.1z"/><path d="M5 15.5l3.5 3.5-2 2-3.5-3.5z"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M21.5 12h-3M5.5 12h-3M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1M18.5 18.5l-2.1-2.1M7.6 7.6 5.5 5.5"/></symbol>
+<symbol id="i-bars" viewBox="0 0 24 24"><line x1="5" y1="19" x2="5" y2="13"/><line x1="11" y1="19" x2="11" y2="8"/><line x1="17" y1="19" x2="17" y2="4"/></symbol>
+<symbol id="i-wifioff" viewBox="0 0 24 24"><path d="M3 8.5a16 16 0 0 1 6.3-3.4M20.9 8.5a16 16 0 0 0-3.3-2.4"/><path d="M6.5 12a11 11 0 0 1 4-2.1M17.4 12a11 11 0 0 0-2.2-1.6"/><path d="M9.8 15.5a6 6 0 0 1 4.2-1.6"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/><line x1="2.5" y1="2.5" x2="21.5" y2="21.5"/></symbol>
+<symbol id="i-wifi" viewBox="0 0 24 24"><path d="M3 8.5a16 16 0 0 1 18 0"/><path d="M6.3 12.3a11.2 11.2 0 0 1 11.4 0"/><path d="M9.6 16a6.2 6.2 0 0 1 4.8 0"/><circle cx="12" cy="19.2" r="1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3.2l1.3-2.2h6.9L16.7 8H20a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="14" r="3.6"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2"/><path d="M7.5 12.3l3 3 6-6.3"/></symbol>
+<symbol id="i-check2" viewBox="0 0 24 24"><path d="M4 12l5.5 5.5L20 6"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 17V11a6 6 0 0 1 12 0v6l2 2.5H4z"/><path d="M9.5 21a2.6 2.6 0 0 0 5 0"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="20" y1="20" x2="15.3" y2="15.3"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12.5"/><path d="M7 11.5 12 16.5 17 11.5"/><path d="M4.5 19.5h15"/></symbol>
+<symbol id="i-chevr" viewBox="0 0 24 24"><path d="M9 4.5 17 12 9 19.5"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="4" x2="12" y2="20"/><line x1="4" y1="12" x2="20" y2="12"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.7-4.9 4.5 1.3 6.5L12 16.9l-5.9 3.3 1.3-6.5-4.9-4.5 6.6-.7z"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21.5S5 14.8 5 9.8a7 7 0 0 1 14 0c0 5-7 11.7-7 11.7z"/><circle cx="12" cy="9.7" r="2.4"/></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="7.5" y1="2.5" x2="7.5" y2="6.5"/><line x1="16.5" y1="2.5" x2="16.5" y2="6.5"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M3 5h18v11H9l-4.5 4V16H3z"/></symbol>
+<symbol id="i-brief" viewBox="0 0 24 24"><rect x="2.5" y="7.5" width="19" height="12.5" rx="2"/><path d="M8.5 7.5V5.8a1.8 1.8 0 0 1 1.8-1.8h3.4a1.8 1.8 0 0 1 1.8 1.8V7.5"/><line x1="2.5" y1="13" x2="21.5" y2="13"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5"/></symbol>
+<symbol id="i-finger" viewBox="0 0 24 24"><path d="M12 3a8 8 0 0 1 8 8c0 3-1 5-1 5"/><path d="M12 3a8 8 0 0 0-8 8c0 4 1.5 7 1.5 7"/><path d="M12 7.3a5.3 5.3 0 0 1 5.3 5.3c0 2.2-.6 3.8-.6 3.8"/><path d="M12 7.3A5.3 5.3 0 0 0 6.7 12.6c0 3 1 5.4 1 5.4"/><path d="M12 11.6a1.9 1.9 0 0 1 1.9 1.9c0 2.3-1 4-2.4 5.7"/></symbol>
+<symbol id="i-battery" viewBox="0 0 24 24"><rect x="2" y="8" width="17" height="8" rx="1.6"/><line x1="21" y1="10.5" x2="21" y2="13.5"/><rect x="4" y="10" width="10" height="4" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-arrleft" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M10.5 6 5 12l5.5 6"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2.5 20 6v6c0 5.2-3.4 8.7-8 9.5-4.6-.8-8-4.3-8-9.5V6z"/><path d="M8.5 12l2.5 2.5L16 9"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v10h12V10"/><rect x="10" y="14.5" width="4" height="5.5"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><circle cx="4.5" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor" stroke="none"/><line x1="8.5" y1="6" x2="21" y2="6"/><line x1="8.5" y1="12" x2="21" y2="12"/><line x1="8.5" y1="18" x2="21" y2="18"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2"/><path d="M12 6.5V12l4 2.3"/></symbol>
+<symbol id="i-send" viewBox="0 0 24 24"><path d="M21.5 2.5 2.5 10.3l7 3.2 3.2 7z"/><line x1="9.5" y1="13.5" x2="21.5" y2="2.5"/></symbol>
+<symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 4.5h18l-7 8.5v6l-4 2v-8z"/></symbol>
+<symbol id="i-signal" viewBox="0 0 24 24"><rect x="3" y="15" width="3.4" height="6" fill="currentColor" stroke="none"/><rect x="8.3" y="11" width="3.4" height="10" fill="currentColor" stroke="none"/><rect x="13.6" y="7" width="3.4" height="14" fill="currentColor" stroke="none"/><rect x="18.9" y="3" width="3.4" height="18" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20H9"/><path d="M14 8l4.5 4-4.5 4"/><line x1="18.3" y1="12" x2="8.5" y2="12"/></symbol>
+</defs>
+</svg>
+
+<!-- ================================================================= -->
+<!-- 00 — COVER -->
+<!-- ================================================================= -->
+<div class="stage cover">
+  <div class="cover-top">
+    <div class="brandmark"><div class="sq">G</div><div class="word">GÉRA · PLATEFORME DE GESTION LOCATIVE</div></div>
+    <div class="cover-tag">Dossier de conception visuelle<br>Web &amp; application mobile</div>
+  </div>
+
+  <div class="cover-mid">
+    <div>
+      <h1>La maquette,<br><b>écran par écran.</b></h1>
+      <p class="cover-sub">Ce que verront Ibrahima dans son bureau, Fatoumata sur le terrain, Mamadou depuis son téléphone — et Sékou, à l'équipe Géra, depuis le poste qui pilote toutes les organisations à la fois. Un système visuel pensé pour la Guinée : chiffres en GNF, Mobile Money, réseau instable, lecture rapide.</p>
+    </div>
+    <div class="cover-stack">
+      <div class="cover-card" style="width:78mm; height:56mm; top:0; right:0; transform:rotate(2.5deg);">
+        <div class="bar"><i></i><i></i><i></i></div>
+        <div class="body">
+          <div style="display:flex; gap:5px; margin-bottom:6px;">
+            <div style="flex:1; height:14px; background:var(--laterite-t); border-radius:4px;"></div>
+            <div style="flex:1; height:14px; background:var(--indigo-t); border-radius:4px;"></div>
+            <div style="flex:1; height:14px; background:var(--gold-t); border-radius:4px;"></div>
+          </div>
+          <div style="height:46px; background:var(--paper-2); border-radius:5px; display:flex; align-items:flex-end; gap:4px; padding:6px;">
+            <div style="width:8px; height:40%; background:var(--indigo);"></div>
+            <div style="width:8px; height:65%; background:var(--indigo);"></div>
+            <div style="width:8px; height:50%; background:var(--indigo);"></div>
+            <div style="width:8px; height:85%; background:var(--laterite);"></div>
+          </div>
+        </div>
+      </div>
+      <div class="cover-card" style="width:42mm; height:82mm; bottom:0; left:2mm; transform:rotate(-4deg); z-index:2;">
+        <div class="body" style="background:var(--ink); height:100%; padding:8px;">
+          <div style="color:var(--gold-t); font-family:var(--f-mono); font-size:6px; margin-bottom:10px;">09:41</div>
+          <div style="color:#fff; font-size:9px; font-weight:800; margin-bottom:3px;">Bonjour Fatoumata</div>
+          <div style="color:#B7A99A; font-size:6px; margin-bottom:8px;">3 encaissements aujourd'hui</div>
+          <div style="background:rgba(255,255,255,.08); border-radius:6px; height:26px; margin-bottom:6px;"></div>
+          <div style="background:rgba(255,255,255,.08); border-radius:6px; height:26px; margin-bottom:6px;"></div>
+          <div style="background:var(--laterite); border-radius:6px; height:20px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cover-bottom">
+    <div class="chiplist">
+      <div class="chip">8 écrans web — agence</div>
+      <div class="chip">6 écrans mobile — terrain</div>
+      <div class="chip">1 poste — super admin</div>
+      <div class="chip">Système de design complet</div>
+      <div class="chip">Réf. cahier des charges v2.2</div>
+    </div>
+    <div class="cover-meta">Conakry · Septembre 2026<br>Version de présentation — 01</div>
+  </div>
+  <div class="foot"><span>00 — Couverture</span><span>Géra — Maquette</span></div>
+</div>
+
+<!-- ================================================================= -->
+<!-- 01 — DESIGN SYSTEM -->
+<!-- ================================================================= -->
+<div class="stage">
+  <div class="kicker"><div class="line"></div>SYSTÈME DE DESIGN</div>
+  <div class="screen-head">
+    <h2>Une identité <b>avant les écrans.</b></h2>
+  </div>
+  <p style="max-width:150mm; font-size:9.6pt; color:var(--sub-dark); line-height:1.6; margin-bottom:7mm;">Trois couleurs de terre et d'indigo, une typographie à trois rôles, des composants réutilisés à l'identique sur tous les écrans qui suivent — de l'agence à la plateforme elle-même. Rien n'est improvisé écran par écran — tout vient d'ici.</p>
+
+  <div class="sys-grid">
+    <div class="sys-block">
+      <h3>Palette</h3>
+      <div class="swatches">
+        <div class="swatch"><div class="sq2" style="background:var(--laterite)"></div><div class="nm">Latérite</div><div class="hx">#C1502E — accent principal</div></div>
+        <div class="swatch"><div class="sq2" style="background:var(--indigo)"></div><div class="nm">Indigo boubou</div><div class="hx">#2E3F6E — secondaire</div></div>
+        <div class="swatch"><div class="sq2" style="background:var(--gold)"></div><div class="nm">Or de savane</div><div class="hx">#C99A3E — mise en valeur</div></div>
+        <div class="swatch"><div class="sq2" style="background:var(--success)"></div><div class="nm">Émeraude</div><div class="hx">#1F7A5C — succès / payé</div></div>
+        <div class="swatch"><div class="sq2" style="background:var(--warning)"></div><div class="nm">Moutarde</div><div class="hx">#B08324 — en attente</div></div>
+        <div class="swatch"><div class="sq2" style="background:var(--critical)"></div><div class="nm">Carmin</div><div class="hx">#B33951 — retard / risque</div></div>
+      </div>
+      <h3 style="margin-top:8mm;">Composants</h3>
+      <div class="comp-row">
+        <div class="btn btn-primary"><svg class="icon"><use href="#i-plus"/></svg>Encaisser un paiement</div>
+        <div class="btn btn-outline" style="color:var(--text-dark); border-color:var(--hair-dark); background:rgba(255,255,255,.04);">Voir le relevé</div>
+      </div>
+      <div class="comp-row">
+        <span class="pill pill-success"><i class="dot"></i>Payé</span>
+        <span class="pill pill-warning"><i class="dot"></i>En attente</span>
+        <span class="pill pill-critical"><i class="dot"></i>En retard</span>
+        <span class="pill pill-info"><i class="dot"></i>Nouveau</span>
+      </div>
+    </div>
+
+    <div class="sys-block">
+      <h3>Typographie — trois rôles</h3>
+      <div class="type-spec">
+        <div class="type-row"><div class="lbl">Titres — Fraunces</div><div class="sample disp">Comment allez-vous, Aïssatou ?</div></div>
+        <div class="type-row"><div class="lbl">Interface — Public Sans</div><div class="sample body">Encaisser le loyer de la chambre M-003</div></div>
+        <div class="type-row"><div class="lbl">Chiffres — IBM Plex Mono</div><div class="sample mono">450 000 GNF · 16/09/2026</div></div>
+      </div>
+      <h3 style="margin-top:8mm;">Principe de mise en page</h3>
+      <p style="font-size:8.6pt; color:var(--sub-dark); line-height:1.6;">Chaque écran met en scène <b style="color:var(--text-dark);">un seul module</b>, dans un cadre réaliste (navigateur ou téléphone), accompagné d'une courte note de conception. Aucune capture n'est décorative : chaque élément correspond à une table du schéma de données.</p>
+    </div>
+  </div>
+  <div class="foot"><span>01 — Système de design</span><span>Géra — Maquette</span></div>
+</div>
+
+<!-- ================================================================= -->
+<!-- 02 — DIVIDER : WEB -->
+<!-- ================================================================= -->
+<div class="stage divider">
+  <div class="divnum">PARTIE 1 / 3</div>
+  <h2>L'espace de travail <b>de l'agence.</b></h2>
+  <p class="dsub">Huit écrans web pensés pour Ibrahima et son équipe : une information dense mais jamais confuse, des statuts qui se lisent d'un coup d'œil, et l'argent — commissions, versements, retards — toujours visible sans un clic de plus.</p>
+  <div class="dlist">
+    <div class="it"><b>Dashboard</b>Vue d'ensemble</div>
+    <div class="it"><b>Patrimoine</b>Biens &amp; locaux</div>
+    <div class="it"><b>Location</b>Locataires &amp; contrats</div>
+    <div class="it"><b>Finance</b>Paiements &amp; impayés</div>
+    <div class="it"><b>Propriétaires</b>Portail &amp; versements</div>
+    <div class="it"><b>Exploitation</b>Maintenance</div>
+  </div>
+  <div class="foot"><span>02 — Ouverture Web</span><span>Géra — Maquette</span></div>
+</div>
+
+<!-- ================================================================= -->
+<!-- 03 — WEB : DASHBOARD -->
+<!-- ================================================================= -->
+<div class="stage">
+  <div class="kicker"><div class="line"></div>ÉCRAN WEB · 1 / 8</div>
+  <div class="screen-head">
+    <h2>Le <b>tableau de bord</b> d'Ibrahima</h2>
+    <div class="refbadge">RÉF. BOUCLE CENTRALE</div>
+  </div>
+  <div class="screen-body">
+    <div class="browser">
+      <div class="browser-bar"><div class="dots"><i></i><i></i><i></i></div><div class="addr"><svg class="icon"><use href="#i-lock"/></svg>app.gera.gn/tableau-de-bord</div></div>
+      <div class="app">
+        <div class="app-sidebar">
+          <div class="app-logo"><div class="sq"></div><span>GÉRA</span></div>
+          <div class="navlist">
+            <div class="navitem active"><svg class="icon"><use href="#i-grid"/></svg>Tableau de bord</div>
+            <div class="navitem"><svg class="icon"><use href="#i-building"/></svg>Propriétés</div>
+            <div class="navitem"><svg class="icon"><use href="#i-users"/></svg>Locataires</div>
+            <div class="navitem"><svg class="icon"><use href="#i-file"/></svg>Contrats</div>
+            <div class="navitem"><svg class="icon"><use href="#i-card"/></svg>Paiements</div>
+            <div class="navitem"><svg class="icon"><use href="#i-alert"/></svg>Impayés</div>
+            <div class="navitem"><svg class="icon"><use href="#i-wrench"/></svg>Maintenance</div>
+            <div class="navitem"><svg class="icon"><use href="#i-brief"/></svg>Propriétaires</div>
+            <div class="navitem"><svg class="icon"><use href="#i-gear"/></svg>Paramètres</div>
+          </div>
+          <div class="navfoot"><div class="av">IB</div><div class="who"><b>Ibrahima Diallo</b><span>Admin d'agence</span></div></div>
+        </div>
+        <div class="app-main">
+          <div class="app-topbar">
+            <div><h3>Bonjour Ibrahima</h3><div class="sub">Agence Horizon Immobilier · Kaloum, Conakry</div></div>
+            <div class="topbar-actions">
+              <div class="searchbox"><svg class="icon"><use href="#i-search"/></svg>Rechercher…</div>
+              <div class="iconbtn"><svg class="icon"><use href="#i-bell"/></svg><div class="bubble">3</div></div>
+              <div class="btn btn-primary" style="padding:6px 11px;"><svg class="icon" style="width:10px;height:10px"><use href="#i-plus"/></svg>Nouveau contrat</div>
+            </div>
+          </div>
+
+          <div class="kpi-row">
+            <div class="kpi"><div class="lbl">Loyers encaissés — sept.</div><div class="val">67,0M <span style="font-size:8px;color:var(--sub)">GNF</span></div><div class="delta up"><svg class="icon" style="width:8px;height:8px"><use href="#i-chevr" transform="rotate(-90 12 12)"/></svg>+12 % vs août</div></div>
+            <div class="kpi"><div class="lbl">Taux d'occupation</div><div class="val">92 %</div><div class="delta up">46 / 50 locaux</div></div>
+            <div class="kpi"><div class="lbl">Impayés en cours</div><div class="val">4,1M <span style="font-size:8px;color:var(--sub)">GNF</span></div><div class="delta down">7 dossiers</div></div>
+            <div class="kpi"><div class="lbl">Commission agence</div><div class="val">10,0M <span style="font-size:8px;color:var(--sub)">GNF</span></div><div class="delta up">15 % du brut</div></div>
+          </div>
+
+          <div class="content-grid">
+            <div class="panel" style="display:flex; flex-direction:column;">
+              <h4>Encaissements — 12 derniers mois</h4>
+              <div class="cap">Données d'exemple, en millions de GNF</div>
+              <svg viewBox="0 0 640 220" style="width:100%; flex:1;">
+                <line x1="40" y1="10" x2="40" y2="196" stroke="var(--line)" stroke-width="1"/>
+                <line x1="40" y1="196" x2="630" y2="196" stroke="var(--line)" stroke-width="1"/>
+                <text x="34" y="14" text-anchor="end" font-family="IBM Plex Mono" font-size="8" fill="#A69A89">80M</text>
+                <text x="34" y="60" text-anchor="end" font-family="IBM Plex Mono" font-size="8" fill="#A69A89">60M</text>
+                <text x="34" y="107" text-anchor="end" font-family="IBM Plex Mono" font-size="8" fill="#A69A89">40M</text>
+                <text x="34" y="153" text-anchor="end" font-family="IBM Plex Mono" font-size="8" fill="#A69A89">20M</text>
+                <line x1="40" y1="10" x2="630" y2="10" stroke="#EFE8DB" stroke-width="1"/>
+                <line x1="40" y1="56.5" x2="630" y2="56.5" stroke="#EFE8DB" stroke-width="1"/>
+                <line x1="40" y1="103" x2="630" y2="103" stroke="#EFE8DB" stroke-width="1"/>
+                <line x1="40" y1="149.5" x2="630" y2="149.5" stroke="#EFE8DB" stroke-width="1"/>
+                <!-- bars -->
+                <g fill="#2E3F6E" opacity="0.85">
+                  <rect x="49.6" y="107.7" width="30" height="88.3" rx="2"/>
+                  <rect x="98.7" y="98.4" width="30" height="97.6" rx="2"/>
+                  <rect x="147.9" y="103" width="30" height="93" rx="2"/>
+                  <rect x="197.1" y="91.4" width="30" height="104.6" rx="2"/>
+                  <rect x="246.2" y="77.4" width="30" height="118.6" rx="2"/>
+                  <rect x="295.4" y="82.1" width="30" height="113.9" rx="2"/>
+                  <rect x="344.6" y="72.8" width="30" height="123.2" rx="2"/>
+                  <rect x="393.7" y="61.2" width="30" height="134.8" rx="2"/>
+                  <rect x="442.9" y="68.1" width="30" height="127.9" rx="2"/>
+                  <rect x="492.1" y="56.5" width="30" height="139.5" rx="2"/>
+                  <rect x="541.2" y="49.5" width="30" height="146.5" rx="2"/>
+                </g>
+                <rect x="590.4" y="40.2" width="30" height="155.8" rx="2" fill="var(--laterite)"/>
+                <text x="605.4" y="33" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" font-weight="700" fill="var(--laterite)">67M</text>
+                <g font-family="Public Sans" font-size="7.5" fill="#A69A89">
+                  <text x="64.6" y="208" text-anchor="middle">Jan</text><text x="113.7" y="208" text-anchor="middle">Fév</text>
+                  <text x="162.9" y="208" text-anchor="middle">Mar</text><text x="212.1" y="208" text-anchor="middle">Avr</text>
+                  <text x="261.2" y="208" text-anchor="middle">Mai</text><text x="310.4" y="208" text-anchor="middle">Jun</text>
+                  <text x="359.6" y="208" text-anchor="middle">Jul</text><text x="408.7" y="208" text-anchor="middle">Aoû</text>
+                  <text x="457.9" y="208" text-anchor="middle">Sep</text><text x="507.1" y="208" text-anchor="middle">Oct</text>
+                  <text x="556.2" y="208" text-anchor="middle">Nov</text>
+                  <text x="605.4" y="208" text-anchor="middle" fill="var(--laterite)" font-weight="700">Déc</text>
+                </g>
+              </svg>
+            </div>
+            <div class="panel">
+              <h4>Activité récente</h4>
+              <div class="cap">&nbsp;</div>
+              <div class="activity">
+                <div class="aitem"><div class="dotwrap"><div class="adot" style="background:var(--success)"></div><div class="aline"></div></div><div><b>Aïssatou Camara</b> a payé 450 000 GNF <div class="atime">Il y a 12 min · M-003</div></div></div>
+                <div class="aitem"><div class="dotwrap"><div class="adot" style="background:var(--warning)"></div><div class="aline"></div></div><div>Ticket <b>fuite d'eau</b> ouvert <div class="atime">Il y a 1 h · Résidence Dixinn</div></div></div>
+                <div class="aitem"><div class="dotwrap"><div class="adot" style="background:var(--indigo)"></div><div class="aline"></div></div><div>Visite planifiée — <b>lead Ousmane B.</b> <div class="atime">Aujourd'hui 16:00</div></div></div>
+                <div class="aitem"><div class="dotwrap"><div class="adot" style="background:var(--critical)"></div></div><div><b>3 loyers</b> passés en retard <div class="atime">Ce matin</div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="persona-line"><div class="av">IB</div>« Je veux tout voir en arrivant, sans cliquer. »</div>
+      <ul class="principles">
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>Priorité à l'argent</b><span class="d">Les 4 indicateurs qui font vivre l'agence en haut, jamais en dessous de la ligne de flottaison.</span></div></li>
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>Un accent, pas dix couleurs</b><span class="d">La latérite ne sert qu'à l'action du moment — ici, le mois en cours dans le graphique.</span></div></li>
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>Fil d'activité, pas de journal brut</b><span class="d">Chaque ligne répond à « qui, quoi, quand » — jamais un identifiant technique.</span></div></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>03 — Tableau de bord</span><span>Géra — Maquette</span></div>
+</div>
+
+<!-- ================================================================= -->
+<!-- 04 — WEB : PROPRIÉTÉS & LOCAUX -->
+<!-- ================================================================= -->
+<div class="stage">
+  <div class="kicker"><div class="line"></div>ÉCRAN WEB · 2 / 8</div>
+  <div class="screen-head">
+    <h2>Le <b>patrimoine</b> en un coup d'œil</h2>
+    <div class="refbadge">RÉF. PROPERTIES · UNITS</div>
+  </div>
+  <div class="screen-body">
+    <div class="browser">
+      <div class="browser-bar"><div class="dots"><i></i><i></i><i></i></div><div class="addr"><svg class="icon"><use href="#i-lock"/></svg>app.gera.gn/proprietes</div></div>
+      <div class="app">
+        <div class="app-sidebar">
+          <div class="app-logo"><div class="sq"></div><span>GÉRA</span></div>
+          <div class="navlist">
+            <div class="navitem"><svg class="icon"><use href="#i-grid"/></svg>Tableau de bord</div>
+            <div class="navitem active"><svg class="icon"><use href="#i-building"/></svg>Propriétés</div>
+            <div class="navitem"><svg class="icon"><use href="#i-users"/></svg>Locataires</div>
+            <div class="navitem"><svg class="icon"><use href="#i-file"/></svg>Contrats</div>
+            <div class="navitem"><svg class="icon"><use href="#i-card"/></svg>Paiements</div>
+            <div class="navitem"><svg class="icon"><use href="#i-alert"/></svg>Impayés</div>
+            <div class="navitem"><svg class="icon"><use href="#i-wrench"/></svg>Maintenance</div>
+            <div class="navitem"><svg class="icon"><use href="#i-brief"/></svg>Propriétaires</div>
+          </div>
+          <div class="navfoot"><div class="av">IB</div><div class="who"><b>Ibrahima Diallo</b><span>Admin d'agence</span></div></div>
+        </div>
+        <div class="app-main">
+          <div class="app-topbar">
+            <div><h3>Propriétés</h3><div class="sub">12 propriétés · 50 locaux</div></div>
+            <div class="topbar-actions">
+              <div class="searchbox"><svg class="icon"><use href="#i-filter"/></svg>Tous les quartiers</div>
+              <div class="btn btn-primary" style="padding:6px 11px;"><svg class="icon" style="width:10px;height:10px"><use href="#i-plus"/></svg>Ajouter un bien</div>
+            </div>
+          </div>
+          <div class="prop-grid">
+            <div class="prop-card">
+              <div class="prop-photo" style="background:linear-gradient(135deg,#C1502E,#8C3A21)"><div class="tag">Photo du bien</div></div>
+              <div class="prop-info">
+                <h5>Résidence Horizon</h5>
+                <div class="loc"><svg class="icon"><use href="#i-pin"/></svg>Kaloum, Conakry</div>
+                <div class="prop-stats">
+                  <div class="st"><b>6</b><span>Locaux</span></div>
+                  <div class="st"><b>5</b><span>Occupés</span></div>
+                  <div class="st"><b style="color:var(--success)">83%</b><span>Taux</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="prop-card">
+              <div class="prop-photo" style="background:linear-gradient(135deg,#2E3F6E,#1A2547)"><div class="tag">Photo du bien</div></div>
+              <div class="prop-info">
+                <h5>Immeuble Dixinn Port</h5>
+                <div class="loc"><svg class="icon"><use href="#i-pin"/></svg>Dixinn, Conakry</div>
+                <div class="prop-stats">
+                  <div class="st"><b>10</b><span>Locaux</span></div>
+                  <div class="st"><b>10</b><span>Occupés</span></div>
+                  <div class="st"><b style="color:var(--success)">100%</b><span>Taux</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="prop-card">
+              <div class="prop-photo" style="background:linear-gradient(135deg,#C99A3E,#8C6B24)"><div class="tag">Photo du bien</div></div>
+              <div class="prop-info">
+                <h5>Villa Ratoma Nord</h5>
+                <div class="loc"><svg class="icon"><use href="#i-pin"/></svg>Ratoma, Conakry</div>
+                <div class="prop-stats">
+                  <div class="st"><b>4</b><span>Locaux</span></div>
+                  <div class="st"><b>2</b><span>Occupés</span></div>
+                  <div class="st"><b style="color:var(--warning)">50%</b><span>Taux</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="panel" style="margin-top:4mm;">
+            <h4>Locaux — Résidence Horizon</h4>
+            <table class="dt">
+              <tr><th>Local</th><th>Type</th><th>Loyer</th><th>Statut</th><th></th></tr>
+              <tr><td><b>M-001</b></td><td>Chambre</td><td class="num">400 000 GNF</td><td><span class="pill pill-success"><i class="dot"></i>Occupé</span></td><td><svg class="icon" style="color:var(--sub)"><use href="#i-chevr"/></svg></td></tr>
+              <tr><td><b>M-002</b></td><td>Chambre</td><td class="num">400 000 GNF</td><td><span class="pill pill-success"><i class="dot"></i>Occupé</span></td><td><svg class="icon" style="color:var(--sub)"><use href="#i-chevr"/></svg></td></tr>
+              <tr><td><b>M-003</b></td><td>Chambre</td><td class="num">450 000 GNF</td><td><span class="pill pill-success"><i class="dot"></i>Occupé</span></td><td><svg class="icon" style="color:var(--sub)"><use href="#i-chevr"/></svg></td></tr>
+              <tr><td><b>M-004</b></td><td>Studio</td><td class="num">600 000 GNF</td><td><span class="pill pill-info"><i class="dot"></i>Disponible</span></td><td><svg class="icon" style="color:var(--sub)"><use href="#i-chevr"/></svg></td></tr>
+              <tr><td><b>M-005</b></td><td>Chambre</td><td class="num">400 000 GNF</td><td><span class="pill pill-neutral"><i class="dot"></i>Maintenance</span></td><td><svg class="icon" style="color:var(--sub)"><use href="#i-chevr"/></svg></td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="persona-line"><div class="av">IB</div>« Un local vacant doit sauter aux yeux. »</div>
+      <ul class="principles">
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>Cartes puis table</b><span class="d">Vue haute pour le patrimoine, vue fine pour chaque local — deux échelles de lecture sur un même écran.</span></div></li>
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>Statut = couleur + mot</b><span class="d">Jamais la couleur seule : un agent daltonien lit « Disponible » aussi vite qu'un autre.</span></div></li>
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>Photos annoncées comme exemples</b><span class="d">Les vignettes sont ici des aplats de couleur — de vraies photos les remplaceront à l'usage.</span></div></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>04 — Propriétés &amp; locaux</span><span>Géra — Maquette</span></div>
+</div>
+
+<!-- ================================================================= -->
+<!-- 05 — WEB : FICHE LOCATAIRE -->
+<!-- ================================================================= -->
+<div class="stage">
+  <div class="kicker"><div class="line"></div>ÉCRAN WEB · 3 / 8</div>
+  <div class="screen-head">
+    <h2>La fiche d'<b>Aïssatou</b></h2>
+    <div class="refbadge">RÉF. A1 · A11 · TENANTS</div>
+  </div>
+  <div class="screen-body">
+    <div class="browser">
+      <div class="browser-bar"><div class="dots"><i></i><i></i><i></i></div><div class="addr"><svg class="icon"><use href="#i-lock"/></svg>app.gera.gn/locataires/aissatou-camara</div></div>
+      <div class="app">
+        <div class="app-sidebar">
+          <div class="app-logo"><div class="sq"></div><span>GÉRA</span></div>
+          <div class="navlist">
+            <div class="navitem"><svg class="icon"><use href="#i-grid"/></svg>Tableau de bord</div>
+            <div class="navitem"><svg class="icon"><use href="#i-building"/></svg>Propriétés</div>
+            <div class="navitem active"><svg class="icon"><use href="#i-users"/></svg>Locataires</div>
+            <div class="navitem"><svg class="icon"><use href="#i-file"/></svg>Contrats</div>
+            <div class="navitem"><svg class="icon"><use href="#i-card"/></svg>Paiements</div>
+          </div>
+          <div class="navfoot"><div class="av">IB</div><div class="who"><b>Ibrahima Diallo</b><span>Admin d'agence</span></div></div>
+        </div>
+        <div class="app-main">
+          <div class="app-topbar">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div style="width:34px;height:34px;border-radius:50%;background:var(--indigo-t);color:var(--indigo);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;">AC</div>
+              <div><h3>Aïssatou Camara</h3><div class="sub">Locataire depuis le 03/01/2025 · M-003, Résidence Horizon</div></div>
+            </div>
+            <div class="topbar-actions"><div class="btn btn-outline">Contacter</div><div class="btn btn-primary" style="padding:6px 11px;">Encaisser</div></div>
+          </div>
+          <div style="display:flex; gap:5mm; margin-bottom:4mm; border-bottom:1px solid var(--line); padding-bottom:2mm;">
+            <div style="font-size:8px; font-weight:800; color:var(--laterite); border-bottom:2px solid var(--laterite); padding-bottom:2mm;">Contrat</div>
+            <div style="font-size:8px; font-weight:700; color:var(--sub);">Paiements</div>
+            <div style="font-size:8px; font-weight:700; color:var(--sub);">Documents</div>
+            <div style="font-size:8px; font-weight:700; color:var(--sub);">État des lieux</div>
+          </div>
+          <div class="content-grid">
+            <div style="display:flex; flex-direction:column; gap:4mm;">
+              <div class="panel">
+                <h4>Conditions du contrat</h4>
+                <div class="cap">Contrat #CT-2025-0031 · Actif</div>
+                <table class="dt">
+                  <tr><td style="color:var(--sub)">Loyer mensuel</td><td class="num" style="text-align:right">450 000 GNF</td></tr>
+                  <tr><td style="color:var(--sub)">Jour d'échéance</td><td class="num" style="text-align:right">Le 5 du mois</td></tr>
+                  <tr><td style="color:var(--sub)">Caution versée</td><td class="num" style="text-align:right">900 000 GNF</td></tr>
+                  <tr><td style="color:var(--sub)">Dernière révision</td><td class="num" style="text-align:right">+5 % au 01/01/2026</td></tr>
+                </table>
+              </div>
+              <div class="panel" style="background:var(--gold-t); border-color:var(--gold);">
+                <h4 style="display:flex; align-items:center; gap:5px;"><svg class="icon" style="width:11px;height:11px;color:var(--warning)"><use href="#i-shield"/></svg>Garante — Mariam Camara</h4>
+                <div class="cap">Sœur · Montant garanti 900 000 GNF · Pièce d'identité vérifiée</div>
+              </div>
+            </div>
+            <div class="panel">
+              <h4>Historique des paiements</h4>
+              <div class="cap">6 derniers mois</div>
+              <div class="activity">
+                <div class="aitem"><div class="dotwrap"><div class="adot" style="background:var(--success)"></div><div class="aline"></div></div><div>Sept. — <b class="num">450 000 GNF</b><div class="atime">Orange Money · 05/09</div></div></div>
+                <div class="aitem"><div class="dotwrap"><div class="adot" style="background:var(--success)"></div><div class="aline"></div></div><div>Août — <b class="num">450 000 GNF</b><div class="atime">Espèces · 04/08</div></div></div>
+                <div class="aitem"><div class="dotwrap"><div class="adot" style="background:var(--warning)"></div><div class="aline"></div></div><div>Juil. — <b class="num">450 000 GNF</b><div class="atime">Payé J+8 · pénalité 9 000 GNF</div></div></div>
+                <div class="aitem"><div class="dotwrap"><div class="adot" style="background:var(--success)"></div></div><div>Juin — <b class="num">450 000 GNF</b><div class="atime">MTN MoMo · 03/06</div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="persona-line"><div class="av">AC</div>« On oublie souvent qu'un dossier, c'est une personne. »</div>
+      <ul class="principles">
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>Le garant n'est jamais caché</b><span class="d">Encadré en or, visible sans onglet — c'est la pièce qui règle les litiges (A1).</span></div></li>
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>L'historique explique les écarts</b><span class="d">Un paiement en retard montre sa pénalité calculée, pas seulement son montant (A5).</span></div></li>
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>Onglets, pas pages séparées</b><span class="d">Contrat, paiements, documents, état des lieux : un seul dossier, quatre vues.</span></div></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>05 — Fiche locataire</span><span>Géra — Maquette</span></div>
+</div>
+
+<!-- ================================================================= -->
+<!-- 06 — WEB : FACTURATION & PAIEMENTS -->
+<!-- ================================================================= -->
+<div class="stage">
+  <div class="kicker"><div class="line"></div>ÉCRAN WEB · 4 / 8</div>
+  <div class="screen-head">
+    <h2>Encaisser <b>sans friction</b></h2>
+    <div class="refbadge">RÉF. INVOICES · PAYMENTS</div>
+  </div>
+  <div class="screen-body">
+    <div class="browser">
+      <div class="browser-bar"><div class="dots"><i></i><i></i><i></i></div><div class="addr"><svg class="icon"><use href="#i-lock"/></svg>app.gera.gn/paiements</div></div>
+      <div class="app">
+        <div class="app-sidebar">
+          <div class="app-logo"><div class="sq"></div><span>GÉRA</span></div>
+          <div class="navlist">
+            <div class="navitem"><svg class="icon"><use href="#i-grid"/></svg>Tableau de bord</div>
+            <div class="navitem"><svg class="icon"><use href="#i-building"/></svg>Propriétés</div>
+            <div class="navitem"><svg class="icon"><use href="#i-users"/></svg>Locataires</div>
+            <div class="navitem"><svg class="icon"><use href="#i-file"/></svg>Contrats</div>
+            <div class="navitem active"><svg class="icon"><use href="#i-card"/></svg>Paiements</div>
+            <div class="navitem"><svg class="icon"><use href="#i-alert"/></svg>Impayés</div>
+          </div>
+          <div class="navfoot"><div class="av">IB</div><div class="who"><b>Ibrahima Diallo</b><span>Admin d'agence</span></div></div>
+        </div>
+        <div class="app-main" style="position:relative;">
+          <div class="app-topbar"><div><h3>Paiements</h3><div class="sub">Septembre 2026</div></div><div class="topbar-actions"><div class="searchbox"><svg class="icon"><use href="#i-filter"/></svg>Tous statuts</div></div></div>
+          <table class="dt">
+            <tr><th>Locataire</th><th>Local</th><th>Échéance</th><th>Montant</th><th>Statut</th><th></th></tr>
+            <tr><td><div class="tname"><div class="tavatar">AC</div>Aïssatou Camara</div></td><td>M-003</td><td class="num">05/09/2026</td><td class="num">450 000 GNF</td><td><span class="pill pill-success"><i class="dot"></i>Payé</span></td><td><svg class="icon" style="color:var(--sub)"><use href="#i-chevr"/></svg></td></tr>
+            <tr><td><div class="tname"><div class="tavatar">OB</div>Ousmane Bah</div></td><td>D-107</td><td class="num">05/09/2026</td><td class="num">620 000 GNF</td><td><span class="pill pill-success"><i class="dot"></i>Payé</span></td><td><svg class="icon" style="color:var(--sub)"><use href="#i-chevr"/></svg></td></tr>
+            <tr style="background:var(--critical-t)"><td><div class="tname"><div class="tavatar" style="background:var(--critical-t);color:var(--critical)">MS</div>Mariama Sow</div></td><td>H-012</td><td class="num">05/09/2026</td><td class="num">500 000 GNF</td><td><span class="pill pill-critical"><i class="dot"></i>Retard · J+11</span></td><td><svg class="icon" style="color:var(--sub)"><use href="#i-chevr"/></svg></td></tr>
+            <tr><td><div class="tname"><div class="tavatar">FK</div>Fodé Keïta</div></td><td>D-103</td><td class="num">10/09/2026</td><td class="num">600 000 GNF</td><td><span class="pill pill-warning"><i class="dot"></i>Partiel · 300k reçus</span></td><td><svg class="icon" style="color:var(--sub)"><use href="#i-chevr"/></svg></td></tr>
+            <tr><td><div class="tname"><div class="tavatar">NB</div>N'Fanta Barry</div></td><td>M-001</td><td class="num">05/09/2026</td><td class="num">400 000 GNF</td><td><span class="pill pill-success"><i class="dot"></i>Payé</span></td><td><svg class="icon" style="color:var(--sub)"><use href="#i-chevr"/></svg></td></tr>
+          </table>
+
+          <!-- drawer -->
+          <div style="position:absolute; right:0; top:0; bottom:0; width:64mm; background:#fff; border-left:1px solid var(--line); box-shadow:-16px 0 30px -14px rgba(0,0,0,.18); padding:5mm; display:flex; flex-direction:column;">
+            <div style="font-size:9px; font-weight:800; color:var(--ink); margin-bottom:1mm;">Enregistrer un paiement</div>
+            <div style="font-size:7px; color:var(--sub); margin-bottom:4mm;">Mariama Sow · Local H-012</div>
+            <div style="background:var(--critical-t); color:var(--critical); border-radius:7px; padding:2.5mm 3mm; font-size:7px; font-weight:700; margin-bottom:4mm;">Loyer 500 000 + pénalité 10 000 GNF (2%, J+11)</div>
+            <div style="font-size:6.6px; color:var(--sub); font-weight:700; text-transform:uppercase; margin-bottom:1.5mm;">Montant reçu</div>
+            <div style="font-family:var(--f-mono); font-size:16px; font-weight:700; color:var(--ink); margin-bottom:4mm; padding-bottom:2mm; border-bottom:1.5px solid var(--ink);">510 000 <span style="font-size:9px;color:var(--sub)">GNF</span></div>
+            <div style="font-size:6.6px; color:var(--sub); font-weight:700; text-transform:uppercase; margin-bottom:1.5mm;">Méthode</div>
+            <div class="method-row">
+              <div class="method sel">Espèces</div>
+              <div class="method">Orange Money</div>
+              <div class="method">MTN MoMo</div>
+            </div>
+            <div style="flex:1"></div>
+            <div class="btn btn-primary" style="justify-content:center; width:100%;">Confirmer l'encaissement</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="persona-line"><div class="av">FT</div>« Un paiement, ça se saisit en dix secondes. »</div>
+      <ul class="principles">
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>Le tiroir ne quitte pas la liste</b><span class="d">Fatoumata encaisse sans perdre sa file d'attente derrière — la table reste visible.</span></div></li>
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>La pénalité est déjà calculée</b><span class="d">500 000 + 10 000 s'affichent avant la saisie — jamais un calcul à faire de tête (A5).</span></div></li>
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>Trois méthodes, un seul écran</b><span class="d">Espèces, Orange Money, MTN MoMo — le terrain guinéen n'utilise que ces trois-là.</span></div></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>06 — Facturation &amp; paiements</span><span>Géra — Maquette</span></div>
+</div>
+
+<!-- ================================================================= -->
+<!-- 07 — WEB : IMPAYÉS -->
+<!-- ================================================================= -->
+<div class="stage">
+  <div class="kicker"><div class="line"></div>ÉCRAN WEB · 5 / 8</div>
+  <div class="screen-head">
+    <h2>Les <b>impayés</b>, par ancienneté</h2>
+    <div class="refbadge">RÉF. A5 · LATE_FEE_RULES</div>
+  </div>
+  <div class="screen-body">
+    <div class="browser">
+      <div class="browser-bar"><div class="dots"><i></i><i></i><i></i></div><div class="addr"><svg class="icon"><use href="#i-lock"/></svg>app.gera.gn/impayes</div></div>
+      <div class="app">
+        <div class="app-sidebar">
+          <div class="app-logo"><div class="sq"></div><span>GÉRA</span></div>
+          <div class="navlist">
+            <div class="navitem"><svg class="icon"><use href="#i-grid"/></svg>Tableau de bord</div>
+            <div class="navitem"><svg class="icon"><use href="#i-card"/></svg>Paiements</div>
+            <div class="navitem active"><svg class="icon"><use href="#i-alert"/></svg>Impayés</div>
+            <div class="navitem"><svg class="icon"><use href="#i-wrench"/></svg>Maintenance</div>
+          </div>
+          <div class="navfoot"><div class="av">IB</div><div class="who"><b>Ibrahima Diallo</b><span>Admin d'agence</span></div></div>
+        </div>
+        <div class="app-main">
+          <div class="app-topbar"><div><h3>Impayés</h3><div class="sub">7 dossiers · 4 100 000 GNF au total</div></div><div class="topbar-actions"><div class="btn btn-outline"><svg class="icon" style="width:10px;height:10px"><use href="#i-send"/></svg>Relancer tout le monde</div></div></div>
+          <div class="content-grid" style="grid-template-columns:1fr 1.6fr;">
+            <div class="panel">
+              <h4>Par ancienneté</h4>
+              <div class="cap">Nombre de dossiers</div>
+              <svg viewBox="0 0 300 150" style="width:100%">
+                <g font-family="IBM Plex Mono" font-size="8" fill="#A69A89">
+                  <text x="0" y="12">7</text><text x="0" y="46">5</text><text x="0" y="80">3</text><text x="0" y="114">1</text>
+                </g>
+                <line x1="16" y1="8" x2="290" y2="8" stroke="#EFE8DB"/>
+                <line x1="16" y1="42" x2="290" y2="42" stroke="#EFE8DB"/>
+                <line x1="16" y1="76" x2="290" y2="76" stroke="#EFE8DB"/>
+                <line x1="16" y1="110" x2="290" y2="110" stroke="#EFE8DB"/>
+                <line x1="16" y1="122" x2="290" y2="122" stroke="var(--line)"/>
+                <rect x="34" y="105" width="40" height="17" rx="2" fill="var(--gold)"/>
+                <rect x="106" y="88" width="40" height="34" rx="2" fill="var(--warning)"/>
+                <rect x="178" y="71" width="40" height="51" rx="2" fill="var(--laterite)"/>
+                <rect x="250" y="54" width="40" height="68" rx="2" fill="var(--critical)"/>
+                <g font-family="Public Sans" font-size="7.5" fill="#766A5C" text-anchor="middle">
+                  <text x="54" y="134">0–7j</text><text x="126" y="134">8–15j</text><text x="198" y="134">16–30j</text><text x="270" y="134">30j +</text>
+                </g>
+                <g font-family="IBM Plex Mono" font-size="8" font-weight="700" fill="#fff" text-anchor="middle">
+                  <text x="54" y="117">2</text><text x="126" y="105">3</text><text x="198" y="93">4</text><text x="270" y="70">1</text>
+                </g>
+              </svg>
+            </div>
+            <div class="panel">
+              <h4>Dossiers en retard</h4>
+              <table class="dt">
+                <tr><th>Locataire</th><th>Retard</th><th>Loyer</th><th>Pénalité</th><th>Total</th><th></th></tr>
+                <tr><td><div class="tname"><div class="tavatar" style="background:var(--critical-t);color:var(--critical)">MS</div>Mariama Sow</div></td><td><span class="pill pill-critical">J+11</span></td><td class="num">500 000</td><td class="num" style="color:var(--critical)">+10 000</td><td class="num"><b>510 000</b></td><td><div class="btn btn-outline" style="padding:3px 8px; font-size:7px;">Relancer</div></td></tr>
+                <tr><td><div class="tname"><div class="tavatar" style="background:var(--critical-t);color:var(--critical)">TD</div>Thierno Diallo</div></td><td><span class="pill pill-critical">J+34</span></td><td class="num">550 000</td><td class="num" style="color:var(--critical)">+38 500</td><td class="num"><b>588 500</b></td><td><div class="btn btn-outline" style="padding:3px 8px; font-size:7px;">Relancer</div></td></tr>
+                <tr><td><div class="tname"><div class="tavatar">FK</div>Fodé Keïta</div></td><td><span class="pill pill-warning">J+9</span></td><td class="num">300 000</td><td class="num" style="color:var(--warning)">+6 000</td><td class="num"><b>306 000</b></td><td><div class="btn btn-outline" style="padding:3px 8px; font-size:7px;">Relancer</div></td></tr>
+                <tr><td><div class="tname"><div class="tavatar">HB</div>Hawa Baldé</div></td><td><span class="pill pill-warning">J+6</span></td><td class="num">420 000</td><td class="num" style="color:var(--sub)">—</td><td class="num"><b>420 000</b></td><td><div class="btn btn-outline" style="padding:3px 8px; font-size:7px;">Relancer</div></td></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="persona-line"><div class="av">IB</div>« Savoir qui relancer en premier, pas juste qui doit de l'argent. »</div>
+      <ul class="principles">
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>L'ancienneté trie tout</b><span class="d">Le graphique et la liste partagent la même logique — J+30 en carmin, J+7 en moutarde.</span></div></li>
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>La pénalité est une colonne, pas un secret</b><span class="d">Elle se calcule et s'affiche automatiquement selon la règle configurée (A5).</span></div></li>
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>Relancer reste à un clic</b><span class="d">SMS ou WhatsApp partent du même bouton, sans changer d'écran.</span></div></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>07 — Impayés &amp; pénalités</span><span>Géra — Maquette</span></div>
+</div>
+
+<!-- ================================================================= -->
+<!-- 08 — WEB : PORTAIL PROPRIÉTAIRE -->
+<!-- ================================================================= -->
+<div class="stage">
+  <div class="kicker"><div class="line"></div>ÉCRAN WEB · 6 / 8</div>
+  <div class="screen-head">
+    <h2>Ce que voit <b>Mamadou</b></h2>
+    <div class="refbadge">RÉF. A3 · A4 · OWNER-VIEWER</div>
+  </div>
+  <div class="screen-body">
+    <div class="browser">
+      <div class="browser-bar"><div class="dots"><i></i><i></i><i></i></div><div class="addr"><svg class="icon"><use href="#i-lock"/></svg>portail.gera.gn/mamadou-balde</div></div>
+      <div class="app">
+        <div class="app-sidebar" style="background:var(--indigo);">
+          <div class="app-logo"><div class="sq"></div><span style="color:#D9DFF0">GÉRA · PORTAIL</span></div>
+          <div class="navlist">
+            <div class="navitem active" style="background:rgba(255,255,255,.14); color:#fff;"><svg class="icon"><use href="#i-grid"/></svg>Mon patrimoine</div>
+            <div class="navitem" style="color:#B9C2E0"><svg class="icon"><use href="#i-card"/></svg>Versements</div>
+            <div class="navitem" style="color:#B9C2E0"><svg class="icon"><use href="#i-download"/></svg>Relevés PDF</div>
+          </div>
+          <div class="navfoot" style="border-color:rgba(255,255,255,.14)"><div class="av" style="background:var(--gold)">MB</div><div class="who"><b style="color:#fff">Mamadou Baldé</b><span style="color:#B9C2E0">Propriétaire · lecture seule</span></div></div>
+        </div>
+        <div class="app-main">
+          <div class="app-topbar"><div><h3>Bonjour Mamadou</h3><div class="sub">Résidence Horizon &amp; Villa Ratoma Nord</div></div><span class="pill pill-info"><svg class="icon" style="width:8px;height:8px"><use href="#i-eye"/></svg>Lecture seule</span></div>
+          <div class="kpi-row">
+            <div class="kpi"><div class="lbl">Loyers perçus — sept.</div><div class="val">4,20M</div></div>
+            <div class="kpi"><div class="lbl">Commission agence (15%)</div><div class="val" style="color:var(--laterite)">–630k</div></div>
+            <div class="kpi"><div class="lbl">Dépenses imputées</div><div class="val" style="color:var(--critical)">–270k</div></div>
+            <div class="kpi" style="background:var(--success-t); border-color:var(--success);"><div class="lbl" style="color:var(--success)">Net à recevoir</div><div class="val" style="color:var(--success)">3,30M</div></div>
+          </div>
+          <div class="content-grid">
+            <div class="panel">
+              <h4>Répartition du loyer brut</h4>
+              <div class="cap">Septembre 2026 — 4 200 000 GNF</div>
+              <svg viewBox="0 0 580 60" style="width:100%; margin-top:6mm;">
+                <rect x="0" y="18" width="580" height="24" rx="4" fill="var(--paper-2)"/>
+                <rect x="0" y="18" width="440" height="24" fill="var(--success)"/>
+                <rect x="440" y="18" width="84" height="24" fill="var(--laterite)"/>
+                <rect x="524" y="18" width="36" height="24" rx="0" fill="var(--critical)"/>
+                <rect x="0" y="18" width="440" height="24" rx="4" fill="var(--success)" style="clip-path:inset(0 round 4px 0 0 4px)"/>
+              </svg>
+              <div style="display:flex; gap:5mm; margin-top:3mm; font-size:7px;">
+                <div style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;background:var(--success);border-radius:2px;display:inline-block;"></span>Net versé — 78,6%</div>
+                <div style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;background:var(--laterite);border-radius:2px;display:inline-block;"></span>Commission — 15%</div>
+                <div style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;background:var(--critical);border-radius:2px;display:inline-block;"></span>Dépenses — 6,4%</div>
+              </div>
+              <h4 style="margin-top:6mm;">Historique des versements</h4>
+              <table class="dt">
+                <tr><th>Période</th><th>Net versé</th><th>Statut</th></tr>
+                <tr><td>Août 2026</td><td class="num">3 150 000 GNF</td><td><span class="pill pill-success"><i class="dot"></i>Versé</span></td></tr>
+                <tr><td>Juillet 2026</td><td class="num">3 080 000 GNF</td><td><span class="pill pill-success"><i class="dot"></i>Versé</span></td></tr>
+              </table>
+            </div>
+            <div class="panel" style="display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:3mm;">
+              <svg class="icon" style="width:26px;height:26px;color:var(--indigo)"><use href="#i-file"/></svg>
+              <div style="font-size:8.5px; font-weight:800; color:var(--ink);">Relevé de septembre</div>
+              <div style="font-size:7px; color:var(--sub);">Généré automatiquement le 1er du mois</div>
+              <div class="btn btn-primary" style="background:var(--indigo);"><svg class="icon" style="width:10px;height:10px"><use href="#i-download"/></svg>Télécharger le PDF</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="persona-line"><div class="av">MB</div>« Je ne gère rien — je veux juste savoir ce qui m'arrive. »</div>
+      <ul class="principles">
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>Un indigo qui signale « autre espace »</b><span class="d">Le portail change délibérément de teinte : Mamadou sait qu'il n'est plus dans l'outil de l'agence.</span></div></li>
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>« Lecture seule » écrit noir sur blanc</b><span class="d">Le badge n'est pas qu'un rôle technique (owner_viewer) — c'est une phrase compréhensible.</span></div></li>
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>Le calcul de la commission est visible</b><span class="d">Loyer brut, commission, dépenses, net — la barre segmentée répond d'avance à la question « pourquoi ce montant ? » (A4).</span></div></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>08 — Portail propriétaire</span><span>Géra — Maquette</span></div>
+</div>
+
+<!-- ================================================================= -->
+<!-- 09 — WEB : MAINTENANCE -->
+<!-- ================================================================= -->
+<div class="stage">
+  <div class="kicker"><div class="line"></div>ÉCRAN WEB · 7 / 8</div>
+  <div class="screen-head">
+    <h2>La <b>maintenance</b>, du signalement à la clôture</h2>
+    <div class="refbadge">RÉF. A10 · MAINTENANCE_REQUESTS</div>
+  </div>
+  <div class="screen-body">
+    <div class="browser">
+      <div class="browser-bar"><div class="dots"><i></i><i></i><i></i></div><div class="addr"><svg class="icon"><use href="#i-lock"/></svg>app.gera.gn/maintenance</div></div>
+      <div class="app">
+        <div class="app-sidebar">
+          <div class="app-logo"><div class="sq"></div><span>GÉRA</span></div>
+          <div class="navlist">
+            <div class="navitem"><svg class="icon"><use href="#i-grid"/></svg>Tableau de bord</div>
+            <div class="navitem active"><svg class="icon"><use href="#i-wrench"/></svg>Maintenance</div>
+            <div class="navitem"><svg class="icon"><use href="#i-brief"/></svg>Propriétaires</div>
+          </div>
+          <div class="navfoot"><div class="av">IB</div><div class="who"><b>Ibrahima Diallo</b><span>Admin d'agence</span></div></div>
+        </div>
+        <div class="app-main">
+          <div class="app-topbar"><div><h3>Maintenance</h3><div class="sub">9 interventions actives</div></div><div class="topbar-actions"><div class="btn btn-outline"><svg class="icon" style="width:10px;height:10px"><use href="#i-users"/></svg>Annuaire prestataires</div></div></div>
+          <div class="kanban">
+            <div class="kcol">
+              <div class="kcol-head">Nouveau<span class="ct">2</span></div>
+              <div class="kcard"><div class="t">Fuite d'eau — salle de bain</div><div class="m">Résidence Dixinn · M-207</div><div class="foot2"><span class="pill pill-critical" style="padding:2px 6px;font-size:5.6px;">Urgent</span></div></div>
+              <div class="kcard"><div class="t">Prise électrique HS</div><div class="m">Villa Ratoma · V-002</div><div class="foot2"><span class="pill pill-neutral" style="padding:2px 6px;font-size:5.6px;">Normal</span></div></div>
+            </div>
+            <div class="kcol">
+              <div class="kcol-head">Assigné<span class="ct">3</span></div>
+              <div class="kcard"><div class="t">Peinture façade</div><div class="m">Résidence Horizon</div><div class="foot2"><div class="vend"><svg class="icon" style="width:9px;height:9px"><use href="#i-wrench"/></svg>Sékou Peintures</div></div></div>
+              <div class="kcard"><div class="t">Serrure à changer</div><div class="m">M-003</div><div class="foot2"><div class="vend"><svg class="icon" style="width:9px;height:9px"><use href="#i-wrench"/></svg>Bah Sécurité</div></div></div>
+            </div>
+            <div class="kcol">
+              <div class="kcol-head">En cours<span class="ct">2</span></div>
+              <div class="kcard"><div class="t">Plomberie cuisine</div><div class="m">Dixinn Port · D-107</div><div class="foot2"><div class="vend"><svg class="icon" style="width:9px;height:9px"><use href="#i-wrench"/></svg>Plomberie Camara</div></div></div>
+            </div>
+            <div class="kcol">
+              <div class="kcol-head">Résolu<span class="ct">2</span></div>
+              <div class="kcard" style="opacity:.7"><div class="t">Climatiseur entretien</div><div class="m">H-012 · Coût 180 000 GNF</div><div class="foot2"><span class="pill pill-success" style="padding:2px 6px;font-size:5.6px;">Clôturé</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="persona-line"><div class="av">FT</div>« Je veux savoir qui envoyer, pas chercher un numéro dans un carnet. »</div>
+      <ul class="principles">
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>Un tableau, pas une liste</b><span class="d">Le statut se voit dans la colonne — glisser une carte suffit à faire avancer le dossier.</span></div></li>
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>Le prestataire remplace le champ texte</b><span class="d">Fini « responsable : voir Fatoumata » — un vrai annuaire avec historique et notation (A10).</span></div></li>
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>L'urgence prime sur l'ordre d'arrivée</b><span class="d">Un badge rouge dans « Nouveau » attire l'œil avant même de lire le titre.</span></div></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>09 — Maintenance</span><span>Géra — Maquette</span></div>
+</div>
+
+<!-- ================================================================= -->
+<!-- 10 — WEB : ABONNEMENT -->
+<!-- ================================================================= -->
+<div class="stage">
+  <div class="kicker"><div class="line"></div>ÉCRAN WEB · 8 / 8</div>
+  <div class="screen-head">
+    <h2>L'<b>abonnement</b>, sans surprise</h2>
+    <div class="refbadge">RÉF. PARTIE D · SUBSCRIPTION_PLANS</div>
+  </div>
+  <div class="screen-body">
+    <div class="browser">
+      <div class="browser-bar"><div class="dots"><i></i><i></i><i></i></div><div class="addr"><svg class="icon"><use href="#i-lock"/></svg>app.gera.gn/parametres/abonnement</div></div>
+      <div class="app">
+        <div class="app-sidebar">
+          <div class="app-logo"><div class="sq"></div><span>GÉRA</span></div>
+          <div class="navlist">
+            <div class="navitem"><svg class="icon"><use href="#i-grid"/></svg>Tableau de bord</div>
+            <div class="navitem active"><svg class="icon"><use href="#i-gear"/></svg>Paramètres</div>
+          </div>
+          <div class="navfoot"><div class="av">IB</div><div class="who"><b>Ibrahima Diallo</b><span>Admin d'agence</span></div></div>
+        </div>
+        <div class="app-main">
+          <div class="app-topbar"><div><h3>Abonnement</h3><div class="sub">Plan actuel : <b>Business</b> · renouvellement le 01/10/2026</div></div></div>
+          <div class="price-row">
+            <div class="price-card"><div class="pname">Free</div><div class="pprice">0 <span>GNF</span></div><ul>
+              <li><svg class="icon"><use href="#i-check"/></svg>1 propriété, 3 locaux</li>
+              <li><svg class="icon"><use href="#i-check"/></svg>Suivi basique</li>
+              <li><svg class="icon"><use href="#i-check"/></svg>Reçu simple</li></ul></div>
+            <div class="price-card"><div class="pname">Standard</div><div class="pprice">150k <span>/mois</span></div><ul>
+              <li><svg class="icon"><use href="#i-check"/></svg>Locaux étendus</li>
+              <li><svg class="icon"><use href="#i-check"/></svg>Reçus PDF</li>
+              <li><svg class="icon"><use href="#i-check"/></svg>Pénalités de retard</li></ul></div>
+            <div class="price-card"><div class="pname">Pro</div><div class="pprice">300k <span>/mois</span></div><ul>
+              <li><svg class="icon"><use href="#i-check"/></svg>Locaux illimités</li>
+              <li><svg class="icon"><use href="#i-check"/></svg>État des lieux</li>
+              <li><svg class="icon"><use href="#i-check"/></svg>Portail propriétaire</li></ul></div>
+            <div class="price-card current"><div class="badge2">PLAN ACTUEL</div><div class="pname">Business</div><div class="pprice">900k <span>/mois</span></div><ul>
+              <li><svg class="icon"><use href="#i-check"/></svg>Commission automatisée</li>
+              <li><svg class="icon"><use href="#i-check"/></svg>API &amp; comptabilité</li>
+              <li><svg class="icon"><use href="#i-check"/></svg>Bot WhatsApp inclus</li></ul></div>
+          </div>
+          <div class="panel" style="margin-top:4mm;">
+            <h4>Utilisation ce mois-ci</h4>
+            <div style="display:flex; gap:8mm; margin-top:3mm;">
+              <div style="flex:1;"><div style="display:flex; justify-content:space-between; font-size:7.4px; margin-bottom:2mm;"><span style="color:var(--sub)">Notifications envoyées</span><span class="num">842 / 1 000</span></div><div style="height:6px; background:var(--paper-2); border-radius:4px;"><div style="height:100%; width:84%; background:var(--indigo); border-radius:4px;"></div></div></div>
+              <div style="flex:1;"><div style="display:flex; justify-content:space-between; font-size:7.4px; margin-bottom:2mm;"><span style="color:var(--sub)">Locaux gérés</span><span class="num">50 / illimité</span></div><div style="height:6px; background:var(--paper-2); border-radius:4px;"><div style="height:100%; width:35%; background:var(--success); border-radius:4px;"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="persona-line"><div class="av">IB</div>« Je veux comprendre pourquoi je paie ce prix. »</div>
+      <ul class="principles">
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>Le plan actuel se distingue vraiment</b><span class="d">Bordure latérite épaisse et badge — pas un simple fond légèrement différent.</span></div></li>
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>Chaque palier montre ce qu'il débloque</b><span class="d">Pas une liste de fonctionnalités abstraites — les mêmes modules vus dans les écrans précédents.</span></div></li>
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>Les quotas se lisent avant la facture surprise</b><span class="d">Barres de consommation visibles en continu, pas seulement à la fin du mois.</span></div></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>10 — Abonnement</span><span>Géra — Maquette</span></div>
+</div>
+
+<!-- ================================================================= -->
+<!-- 11 — DIVIDER : MOBILE -->
+<!-- ================================================================= -->
+<div class="stage divider">
+  <div class="divnum">PARTIE 2 / 3</div>
+  <h2>Dans la poche <b>de Fatoumata.</b></h2>
+  <p class="dsub">L'application mobile suit l'agent sur le terrain, sans réseau garanti. Chaque écran a été pensé pour un pouce, en plein soleil, avec parfois zéro barre de connexion — jamais pour un grand bureau silencieux.</p>
+  <div class="dlist">
+    <div class="it"><b>Connexion</b>Accès rapide et sûr</div>
+    <div class="it"><b>Terrain</b>Locataires hors-ligne</div>
+    <div class="it"><b>Encaissement</b>Paiement en 3 gestes</div>
+    <div class="it"><b>Maintenance</b>Ticket en une minute</div>
+    <div class="it"><b>État des lieux</b>Pièce par pièce</div>
+    <div class="it"><b>WhatsApp</b>Le canal déjà connu</div>
+  </div>
+  <div class="foot"><span>11 — Ouverture Mobile</span><span>Géra — Maquette</span></div>
+</div>
+
+<!-- ================================================================= -->
+<!-- 12 — MOBILE TRIO 1 -->
+<!-- ================================================================= -->
+<div class="stage">
+  <div class="kicker"><div class="line"></div>ÉCRANS MOBILE · 1–3 / 6</div>
+  <div class="screen-head"><h2>Se connecter, <b>puis démarrer sa journée</b></h2><div class="refbadge">RÉF. B12 · MODE HORS-LIGNE</div></div>
+  <div class="phones-row">
+    <div class="phone-col">
+      <div class="phone"><div class="phone-screen">
+        <div class="phone-status"><span>09:41</span><div class="icons"><svg class="icon"><use href="#i-signal"/></svg><svg class="icon"><use href="#i-wifi"/></svg><svg class="icon"><use href="#i-battery"/></svg></div></div>
+        <div class="phone-content" style="display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:3mm;">
+          <div style="width:34px;height:34px;border-radius:10px;background:var(--laterite);"></div>
+          <div style="font-family:var(--f-display); font-style:italic; font-weight:480; font-size:13px; color:var(--ink);">Géra</div>
+          <div style="font-size:6.4px; color:var(--sub); margin-bottom:4mm;">Gestion locative, même hors-ligne</div>
+          <svg class="icon" style="width:30px;height:30px;color:var(--indigo)"><use href="#i-finger"/></svg>
+          <div style="font-size:6.6px; color:var(--sub); margin-top:2mm;">Touchez pour vous identifier</div>
+          <div style="font-size:7px; font-weight:800; color:var(--ink); margin-top:6mm;">Fatoumata Touré</div>
+          <div style="font-size:6px; color:var(--sub);">Agent de terrain · Horizon Immobilier</div>
+        </div>
+      </div></div>
+      <div class="pcap"><h5>Connexion</h5><p>Empreinte digitale plutôt qu'un mot de passe à retaper en plein soleil.</p></div>
+    </div>
+
+    <div class="phone-col">
+      <div class="phone"><div class="phone-screen">
+        <div class="phone-status"><span>09:42</span><div class="icons"><svg class="icon"><use href="#i-signal"/></svg><svg class="icon" style="color:var(--critical)"><use href="#i-wifioff"/></svg><svg class="icon"><use href="#i-battery"/></svg></div></div>
+        <div class="phone-content">
+          <div class="offline-banner"><svg class="icon"><use href="#i-wifioff"/></svg>Hors-ligne — 3 actions en attente</div>
+          <div class="phone-h1">Bonjour Fatoumata<span>Mardi 16 septembre</span></div>
+          <div style="display:flex; gap:2mm; margin:3mm 0;">
+            <div style="flex:1; background:var(--success-t); border-radius:7px; padding:2.5mm;"><div style="font-size:6px;color:var(--success);font-weight:700;">Encaissé</div><div class="num" style="font-size:10px;color:var(--ink);font-weight:700;">1,3M</div></div>
+            <div style="flex:1; background:var(--critical-t); border-radius:7px; padding:2.5mm;"><div style="font-size:6px;color:var(--critical);font-weight:700;">À encaisser</div><div class="num" style="font-size:10px;color:var(--ink);font-weight:700;">3</div></div>
+          </div>
+          <div style="font-size:6.6px; font-weight:700; color:var(--sub); text-transform:uppercase; margin-bottom:1.5mm;">Tournée du jour</div>
+          <div class="list-item"><div class="av2">AC</div><div class="mid"><b>Aïssatou Camara</b><span>M-003 · 450 000 GNF</span></div><div class="end"><svg class="icon" style="width:11px;height:11px;color:var(--sub)"><use href="#i-chevr"/></svg></div></div>
+          <div class="list-item"><div class="av2">OB</div><div class="mid"><b>Ousmane Bah</b><span>D-107 · 620 000 GNF</span></div><div class="end"><svg class="icon" style="width:11px;height:11px;color:var(--sub)"><use href="#i-chevr"/></svg></div></div>
+          <div class="list-item"><div class="av2">HB</div><div class="mid"><b>Hawa Baldé</b><span>D-103 · 420 000 GNF</span></div><div class="end"><svg class="icon" style="width:11px;height:11px;color:var(--sub)"><use href="#i-chevr"/></svg></div></div>
+        </div>
+        <div class="phone-tabbar">
+          <div class="ptab active"><svg class="icon"><use href="#i-home"/></svg><span>Accueil</span></div>
+          <div class="ptab"><svg class="icon"><use href="#i-users"/></svg><span>Locataires</span></div>
+          <div class="ptab"><svg class="icon"><use href="#i-wrench"/></svg><span>Tickets</span></div>
+          <div class="ptab"><svg class="icon"><use href="#i-gear"/></svg><span>Profil</span></div>
+        </div>
+      </div></div>
+      <div class="pcap"><h5>Accueil agent</h5><p>Le bandeau hors-ligne ne bloque rien : la tournée du jour reste consultable et actionnable (A13).</p></div>
+    </div>
+
+    <div class="phone-col">
+      <div class="phone"><div class="phone-screen">
+        <div class="phone-status"><span>09:44</span><div class="icons"><svg class="icon"><use href="#i-signal"/></svg><svg class="icon" style="color:var(--critical)"><use href="#i-wifioff"/></svg><svg class="icon"><use href="#i-battery"/></svg></div></div>
+        <div class="phone-content">
+          <div class="phone-h1" style="display:flex; align-items:center; gap:5px;"><svg class="icon" style="width:12px;height:12px"><use href="#i-arrleft"/></svg>Locataires</div>
+          <div class="searchbox" style="margin:2.5mm 0; width:100%;"><svg class="icon"><use href="#i-search"/></svg>Rechercher un nom…</div>
+          <div class="list-item"><div class="av2">AC</div><div class="mid"><b>Aïssatou Camara</b><span>M-003 · À jour</span></div><div class="end"><span class="pill pill-success" style="padding:2px 6px;font-size:5.6px;">✓ sync</span></div></div>
+          <div class="list-item"><div class="av2">OB</div><div class="mid"><b>Ousmane Bah</b><span>D-107 · À jour</span></div><div class="end"><span class="pill pill-success" style="padding:2px 6px;font-size:5.6px;">✓ sync</span></div></div>
+          <div class="list-item"><div class="av2" style="background:var(--critical-t);color:var(--critical)">MS</div><div class="mid"><b>Mariama Sow</b><span>H-012 · Retard J+11</span></div><div class="end"><span class="pill pill-critical" style="padding:2px 6px;font-size:5.6px;">J+11</span></div></div>
+          <div class="list-item"><div class="av2">FK</div><div class="mid"><b>Fodé Keïta</b><span>D-103 · Partiel</span></div><div class="end"><span class="pill pill-warning" style="padding:2px 6px;font-size:5.6px;">⏳ local</span></div></div>
+        </div>
+        <div class="phone-tabbar">
+          <div class="ptab"><svg class="icon"><use href="#i-home"/></svg><span>Accueil</span></div>
+          <div class="ptab active"><svg class="icon"><use href="#i-users"/></svg><span>Locataires</span></div>
+          <div class="ptab"><svg class="icon"><use href="#i-wrench"/></svg><span>Tickets</span></div>
+          <div class="ptab"><svg class="icon"><use href="#i-gear"/></svg><span>Profil</span></div>
+        </div>
+      </div></div>
+      <div class="pcap"><h5>Liste locataires</h5><p>Le repère « ⏳ local » montre une fiche modifiée hors-ligne, pas encore renvoyée au serveur.</p></div>
+    </div>
+  </div>
+  <div class="foot"><span>12 — Connexion &amp; accueil</span><span>Géra — Maquette</span></div>
+</div>
+
+<!-- ================================================================= -->
+<!-- 13 — MOBILE TRIO 2 -->
+<!-- ================================================================= -->
+<div class="stage">
+  <div class="kicker"><div class="line"></div>ÉCRANS MOBILE · 4–6 / 6</div>
+  <div class="screen-head"><h2>Encaisser, signaler, <b>documenter</b></h2><div class="refbadge">RÉF. A2 · A9 · A10</div></div>
+  <div class="phones-row">
+    <div class="phone-col">
+      <div class="phone"><div class="phone-screen">
+        <div class="phone-status"><span>09:47</span><div class="icons"><svg class="icon"><use href="#i-signal"/></svg><svg class="icon" style="color:var(--critical)"><use href="#i-wifioff"/></svg><svg class="icon"><use href="#i-battery"/></svg></div></div>
+        <div class="phone-content">
+          <div class="phone-h1" style="display:flex; align-items:center; gap:5px;"><svg class="icon" style="width:12px;height:12px"><use href="#i-arrleft"/></svg>Aïssatou Camara</div>
+          <div class="keypad-amt"><div class="lbl">Montant reçu</div><div class="amt">450 000<span style="font-size:9px;color:var(--sub)"> GNF</span></div></div>
+          <div class="method-row"><div class="method sel">Espèces</div><div class="method">Orange</div><div class="method">MTN</div></div>
+          <div class="keypad">
+            <div class="kkey">1</div><div class="kkey">2</div><div class="kkey">3</div>
+            <div class="kkey">4</div><div class="kkey">5</div><div class="kkey">6</div>
+            <div class="kkey">7</div><div class="kkey">8</div><div class="kkey">9</div>
+          </div>
+          <div class="btn btn-primary" style="justify-content:center; width:100%; margin-top:3mm;">Enregistrer</div>
+        </div>
+      </div></div>
+      <div class="pcap"><h5>Encaisser un paiement</h5><p>Trois gestes : montant, méthode, valider — sauvegardé localement, synchronisé plus tard.</p></div>
+    </div>
+
+    <div class="phone-col">
+      <div class="phone"><div class="phone-screen">
+        <div class="phone-status"><span>09:52</span><div class="icons"><svg class="icon"><use href="#i-signal"/></svg><svg class="icon"><use href="#i-wifi"/></svg><svg class="icon"><use href="#i-battery"/></svg></div></div>
+        <div class="phone-content">
+          <div class="phone-h1" style="display:flex; align-items:center; gap:5px;"><svg class="icon" style="width:12px;height:12px"><use href="#i-arrleft"/></svg>Nouveau ticket</div>
+          <div class="photo-box"><svg class="icon"><use href="#i-camera"/></svg><span>Ajouter une photo</span></div>
+          <div style="font-size:6.6px; font-weight:700; color:var(--sub); text-transform:uppercase; margin-bottom:1.5mm;">Priorité</div>
+          <div class="chip-row"><div class="pchip">Basse</div><div class="pchip">Normale</div><div class="pchip sel">Urgente</div></div>
+          <div style="font-size:6.6px; font-weight:700; color:var(--sub); text-transform:uppercase; margin:2mm 0 1.5mm;">Local concerné</div>
+          <div style="background:var(--paper-2); border-radius:6px; padding:2.5mm; font-size:7px; color:var(--ink); display:flex; justify-content:space-between;">M-207 · Résidence Dixinn<svg class="icon" style="width:10px;height:10px;color:var(--sub)"><use href="#i-chevr"/></svg></div>
+          <div class="btn btn-primary" style="justify-content:center; width:100%; margin-top:4mm;">Créer le ticket</div>
+        </div>
+      </div></div>
+      <div class="pcap"><h5>Ticket de maintenance</h5><p>Photo, priorité, local : assez pour agir, jamais un formulaire à dix champs (A13).</p></div>
+    </div>
+
+    <div class="phone-col">
+      <div class="phone"><div class="phone-screen">
+        <div class="phone-status"><span>10:03</span><div class="icons"><svg class="icon"><use href="#i-signal"/></svg><svg class="icon"><use href="#i-wifi"/></svg><svg class="icon"><use href="#i-battery"/></svg></div></div>
+        <div class="phone-content">
+          <div class="phone-h1" style="display:flex; align-items:center; gap:5px;"><svg class="icon" style="width:12px;height:12px"><use href="#i-chat"/></svg>WhatsApp · Géra Bot</div>
+          <div style="margin-top:3mm;">
+            <div class="chat-time">Aujourd'hui 10:02</div>
+            <div class="chatbubble out">Paiement de 450 000 GNF reçu d'Aïssatou pour le local M-003</div>
+            <div class="chatbubble in">✅ Enregistré. Quittance envoyée à Aïssatou Camara. Solde du local M-003 : à jour.</div>
+            <div class="chatbubble out">Quel est le solde de Mamadou ce mois-ci ?</div>
+            <div class="chatbubble in">Mamadou Baldé — net à recevoir en septembre : <b>3 300 000 GNF</b> (après commission et dépenses).</div>
+          </div>
+        </div>
+      </div></div>
+      <div class="pcap"><h5>Assistant WhatsApp</h5><p>Le canal déjà ouvert sur chaque téléphone devient un raccourci vers la plateforme (A9).</p></div>
+    </div>
+  </div>
+  <div class="foot"><span>13 — Encaissement, maintenance, WhatsApp</span><span>Géra — Maquette</span></div>
+</div>
+
+<!-- ================================================================= -->
+<!-- 14 — DIVIDER : SUPER ADMIN -->
+<!-- ================================================================= -->
+<div class="stage divider">
+  <div class="divnum">PARTIE 3 / 3</div>
+  <h2>Et derrière tout ça, <b>l'équipe Géra.</b></h2>
+  <p class="dsub">Un troisième regard, invisible pour les agences et les propriétaires : celui de l'équipe qui exploite la plateforme elle-même. Ni loyers ni locataires ici — des organisations clientes, des abonnements, et l'argent de Géra, pas celui de ses clients.</p>
+  <div class="dlist">
+    <div class="it"><b>Organisations</b>Toutes les agences &amp; particuliers</div>
+    <div class="it"><b>Revenus SaaS</b>MRR, ARR, churn, ARPU</div>
+    <div class="it"><b>Paiements</b>Réconciliation Mobile Money</div>
+    <div class="it"><b>Système</b>API, files, erreurs</div>
+  </div>
+  <div class="foot"><span>14 — Ouverture Super Admin</span><span>Géra — Maquette</span></div>
+</div>
+
+<!-- ================================================================= -->
+<!-- 15 — WEB : SUPER ADMIN -->
+<!-- ================================================================= -->
+<div class="stage">
+  <div class="kicker"><div class="line"></div>ÉCRAN WEB · SUPER ADMIN</div>
+  <div class="screen-head">
+    <h2>Le poste de pilotage <b>de Sékou</b></h2>
+    <div class="refbadge">RÉF. D4 · B10 · B13 · ORGANIZATIONS</div>
+  </div>
+  <div class="screen-body">
+    <div class="browser">
+      <div class="browser-bar"><div class="dots"><i></i><i></i><i></i></div><div class="addr"><svg class="icon"><use href="#i-lock"/></svg>admin.gera.gn/vue-densemble</div></div>
+      <div class="app">
+        <div class="app-sidebar" style="background:#141110;">
+          <div class="app-logo"><div class="sq" style="background:var(--sub-dark);"></div><span>GÉRA · ADMIN</span></div>
+          <div class="navlist">
+            <div class="navitem active" style="background:rgba(255,255,255,.10);"><svg class="icon"><use href="#i-grid"/></svg>Vue d'ensemble</div>
+            <div class="navitem"><svg class="icon"><use href="#i-brief"/></svg>Organisations</div>
+            <div class="navitem"><svg class="icon"><use href="#i-card"/></svg>Abonnements</div>
+            <div class="navitem"><svg class="icon"><use href="#i-bars"/></svg>Paiements &amp; réconciliation</div>
+            <div class="navitem"><svg class="icon"><use href="#i-shield"/></svg>Système &amp; sécurité</div>
+            <div class="navitem"><svg class="icon"><use href="#i-chat"/></svg>Support</div>
+          </div>
+          <div class="navfoot"><div class="av" style="background:var(--sub-dark);">SD</div><div class="who"><b>Sékou Diaby</b><span>Opérations Géra</span></div></div>
+        </div>
+        <div class="app-main">
+          <div class="app-topbar">
+            <div><h3>Bonjour Sékou</h3><div class="sub">146 organisations actives · vue plateforme complète</div></div>
+            <span class="pill pill-neutral" style="background:#EDEAE4; color:#585048;"><svg class="icon" style="width:8px;height:8px"><use href="#i-shield"/></svg>Accès support tracé</span>
+          </div>
+
+          <div class="kpi-row">
+            <div class="kpi"><div class="lbl">MRR</div><div class="val">18,4M <span style="font-size:8px;color:var(--sub)">GNF</span></div><div class="delta up">ARR 220,8M</div></div>
+            <div class="kpi"><div class="lbl">Churn mensuel</div><div class="val">3,2 %</div><div class="delta down">Objectif &lt; 5 %</div></div>
+            <div class="kpi"><div class="lbl">ARPU agences</div><div class="val">610k <span style="font-size:8px;color:var(--sub)">GNF</span></div><div class="delta up">vs 84k particuliers</div></div>
+            <div class="kpi"><div class="lbl">Nouvelles orgs — sept.</div><div class="val">11</div><div class="delta up">dont 4 Business</div></div>
+          </div>
+
+          <div class="content-grid">
+            <div class="panel">
+              <h4>Organisations clientes</h4>
+              <div class="cap">Triées par revenu mensuel</div>
+              <table class="dt">
+                <tr><th>Organisation</th><th>Type</th><th>Plan</th><th>MRR</th><th>Statut</th></tr>
+                <tr><td><b>Horizon Immobilier</b></td><td>Agence</td><td>Business</td><td class="num">900 000</td><td><span class="pill pill-success"><i class="dot"></i>Actif</span></td></tr>
+                <tr><td><b>Awa Résidences</b></td><td>Agence</td><td>Business</td><td class="num">900 000</td><td><span class="pill pill-info"><i class="dot"></i>Essai · J-12</span></td></tr>
+                <tr><td><b>Diallo &amp; Fils</b></td><td>Agence</td><td>Pro</td><td class="num">300 000</td><td><span class="pill pill-critical"><i class="dot"></i>Impayé</span></td></tr>
+                <tr><td><b>Mamadou Baldé</b></td><td>Particulier</td><td>Standard</td><td class="num">150 000</td><td><span class="pill pill-success"><i class="dot"></i>Actif</span></td></tr>
+                <tr><td><b>N'Diaye Gestion</b></td><td>Agence</td><td>Pro</td><td class="num">300 000</td><td><span class="pill pill-success"><i class="dot"></i>Actif</span></td></tr>
+              </table>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4mm;">
+              <div class="panel">
+                <h4>Réconciliation Mobile Money</h4>
+                <div class="cap">Aujourd'hui, toutes organisations</div>
+                <div class="activity">
+                  <div class="aitem"><div class="dotwrap"><div class="adot" style="background:var(--success)"></div></div><div><b>MTN MoMo</b> — 312 transactions <div class="atime">0 écart détecté</div></div></div>
+                  <div class="aitem"><div class="dotwrap"><div class="adot" style="background:var(--warning)"></div></div><div><b>Orange Money</b> — 428 transactions <div class="atime">1 écart · 45 000 GNF à vérifier</div></div></div>
+                </div>
+              </div>
+              <div class="panel">
+                <h4>Santé système</h4>
+                <div class="cap">30 derniers jours</div>
+                <table class="dt">
+                  <tr><td style="color:var(--sub)">Disponibilité API</td><td style="text-align:right"><span class="pill pill-success">99,98 %</span></td></tr>
+                  <tr><td style="color:var(--sub)">File Celery en attente</td><td style="text-align:right"><span class="pill pill-neutral">12 tâches</span></td></tr>
+                  <tr><td style="color:var(--sub)">Erreurs applicatives (24h)</td><td style="text-align:right"><span class="pill pill-warning">2 signalées</span></td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="persona-line"><div class="av">SD</div>« Je dois tout voir, sans jamais me faire passer pour quelqu'un d'autre. »</div>
+      <ul class="principles">
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>Une échelle au-dessus des organisations</b><span class="d">Là où Ibrahima ne voit que son agence (isolation RLS, Partie 4), Sékou voit les 146 — jamais l'inverse.</span></div></li>
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>L'argent de Géra, pas celui des loyers</b><span class="d">MRR et ARR viennent de platform_invoices — une table volontairement distincte des loyers des locataires (E0).</span></div></li>
+        <li class="ic"><svg class="icon" style="width:13px;height:13px"><use href="#i-check2"/></svg><div><b>La réconciliation avant l'alerte client</b><span class="d">Un écart Mobile Money se voit ici en premier — avant qu'un propriétaire ne s'inquiète d'un versement manquant (B10).</span></div></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>15 — Poste de pilotage plateforme</span><span>Géra — Maquette</span></div>
+</div>
+
+<!-- ================================================================= -->
+<!-- 16 — CLOSING -->
+<!-- ================================================================= -->
+<div class="stage">
+  <div class="kicker"><div class="line"></div>EN SYNTHÈSE</div>
+  <h2 style="font-size:34pt; font-style:italic; font-weight:340; color:var(--text-dark); max-width:200mm;">Pourquoi ce système <b style="font-style:normal;font-weight:900;color:var(--laterite);">tient la route.</b></h2>
+  <div class="recap-grid">
+    <div class="recap"><div class="icwrap"><svg class="icon"><use href="#i-eye"/></svg></div><h4>Lisible en un regard</h4><p>Statuts en couleur ET en mot, chiffres alignés en tabulaire, une seule couleur d'accent réservée à l'action du moment.</p></div>
+    <div class="recap"><div class="icwrap"><svg class="icon"><use href="#i-pin"/></svg></div><h4>Ancré en Guinée</h4><p>GNF, Orange Money, MTN MoMo, WhatsApp, quartiers de Conakry — jamais une maquette générique traduite après coup.</p></div>
+    <div class="recap"><div class="icwrap"><svg class="icon"><use href="#i-wifioff"/></svg></div><h4>Conçu pour le hors-ligne</h4><p>L'agent sur le terrain n'est jamais bloqué — le bandeau informe, il n'interrompt pas le travail.</p></div>
+    <div class="recap"><div class="icwrap"><svg class="icon"><use href="#i-grid"/></svg></div><h4>Un seul système, trois échelles</h4><p>Mêmes composants, mêmes couleurs, mêmes espacements du dashboard d'agence au poste de pilotage de Sékou — rien n'a été inventé à la volée.</p></div>
+    <div class="recap"><div class="icwrap"><svg class="icon"><use href="#i-shield"/></svg></div><h4>La confiance visible</h4><p>Garant, pénalité, commission : les sujets sensibles ne sont jamais cachés dans un sous-menu.</p></div>
+    <div class="recap"><div class="icwrap"><svg class="icon"><use href="#i-chevr"/></svg></div><h4>Prêt pour le développement</h4><p>Chaque écran référence une table du schéma — de la maquette au code, aucune traduction à improviser.</p></div>
+  </div>
+  <div class="foot"><span>16 — Synthèse</span><span>Géra — Maquette</span></div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,23 @@
+# Dépendances
+node_modules/
+
+# Next.js
+web/.next/
+web/out/
+
+# Build API
+api/dist/
+
+# Environnement — ne jamais committer de secrets
+.env
+.env.local
+!.env.example
+!.env.local.example
+
+# Prisma
+api/prisma/*.db
+
+# Système
+.DS_Store
+Thumbs.db
+*.log

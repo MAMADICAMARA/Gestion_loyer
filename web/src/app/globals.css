@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* Système de design Géra — palette terre de latérite + indigo boubou.
+   Cohérent avec la maquette de référence (Maquette-plateforme-web-mobile.pdf). */
+:root {
+  --paper: #fbf8f3;
+  --paper-2: #f3ece1;
+  --paper-3: #eae1d2;
+  --ink: #241c14;
+  --sub: #766a5c;
+  --line: #e3d9c8;
+
+  --laterite: #c1502e;
+  --laterite-dark: #8c3a21;
+  --laterite-tint: #f3d9cd;
+  --indigo: #2e3f6e;
+  --indigo-tint: #dee3f0;
+  --gold: #c99a3e;
+  --gold-tint: #f3e6c6;
+
+  --success: #1f7a5c;
+  --success-tint: #d9eee5;
+  --warning: #b08324;
+  --warning-tint: #f3e7c9;
+  --critical: #b33951;
+  --critical-tint: #f5dee3;
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-paper-3: var(--paper-3);
+  --color-ink: var(--ink);
+  --color-sub: var(--sub);
+  --color-line: var(--line);
+
+  --color-laterite: var(--laterite);
+  --color-laterite-dark: var(--laterite-dark);
+  --color-laterite-tint: var(--laterite-tint);
+  --color-indigo: var(--indigo);
+  --color-indigo-tint: var(--indigo-tint);
+  --color-gold: var(--gold);
+  --color-gold-tint: var(--gold-tint);
+
+  --color-success: var(--success);
+  --color-success-tint: var(--success-tint);
+  --color-warning: var(--warning);
+  --color-warning-tint: var(--warning-tint);
+  --color-critical: var(--critical);
+  --color-critical-tint: var(--critical-tint);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-public-sans);
+  --font-mono: var(--font-plex-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), "Segoe UI", Arial, sans-serif;
+}

@@ -1,0 +1,294 @@
+// Schéma Prisma — plateforme de gestion locative.
+//
+// IMPORTANT : la source de vérité du schéma SQL reste le fichier
+// ../../schema.sql (racine du projet) — tables, contraintes, triggers de
+// synchronisation organization_id, et policies Row Level Security.
+// Ce fichier Prisma NE DOIT PAS être géré par `prisma migrate` : il sert
+// uniquement à générer un client typé au-dessus des tables déjà créées par
+// schema.sql. Après toute évolution de schema.sql, régénérer ce fichier
+// avec `npx prisma db pull` puis relancer `npx prisma generate`.
+//
+// Tables modélisées au rythme des modules applicatifs qui en ont besoin :
+// organizations/users (Phase 0 — auth), owners/properties/units (Phase 1 —
+// patrimoine). Le reste (tenants, contracts, invoices, payments...) suit
+// dans les phases suivantes de la feuille de route d'implémentation.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(255)
+  orgType   String   @map("org_type") @db.VarChar(20)
+  status    String   @default("active") @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  users User[]
+
+  @@map("organizations")
+}
+
+model User {
+  id                String    @id @default(uuid()) @db.Uuid
+  organizationId    String    @map("organization_id") @db.Uuid
+  email             String    @unique @db.VarChar(255)
+  phone             String?   @db.VarChar(30)
+  passwordHash      String    @map("password_hash") @db.VarChar(255)
+  role              String    @db.VarChar(20)
+  isActive          Boolean   @default(true) @map("is_active")
+  twoFactorEnabled  Boolean   @default(false) @map("two_factor_enabled")
+  lastLoginAt       DateTime? @map("last_login_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("users")
+}
+
+model Owner {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String?  @map("user_id") @db.Uuid
+  fullName       String   @map("full_name") @db.VarChar(255)
+  phone          String?  @db.VarChar(30)
+  email          String?  @db.VarChar(255)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  properties      Property[]
+  commissionRules AgencyCommissionRule[]
+  payouts         OwnerPayout[]
+
+  @@map("owners")
+}
+
+model Property {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  ownerId        String    @map("owner_id") @db.Uuid
+  name           String    @db.VarChar(255)
+  propertyType   String    @map("property_type") @db.VarChar(30)
+  address        String?   @db.VarChar(255)
+  city           String?   @db.VarChar(100)
+  district       String?   @db.VarChar(100)
+  description    String?
+  photoUrl       String?   @map("photo_url")
+  status         String    @default("active") @db.VarChar(20)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  owner Owner  @relation(fields: [ownerId], references: [id])
+  units Unit[]
+
+  @@map("properties")
+}
+
+model Unit {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  propertyId     String    @map("property_id") @db.Uuid
+  number         String    @db.VarChar(50)
+  unitType       String    @map("unit_type") @db.VarChar(30)
+  floor          String?   @db.VarChar(20)
+  areaSqm        Decimal?  @map("area_sqm") @db.Decimal(8, 2)
+  description    String?
+  rentAmount     Decimal   @map("rent_amount") @db.Decimal(14, 2)
+  depositAmount  Decimal?  @map("deposit_amount") @db.Decimal(14, 2)
+  status         String    @default("available") @db.VarChar(20)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  property  Property   @relation(fields: [propertyId], references: [id])
+  contracts Contract[]
+
+  @@map("units")
+}
+
+model Tenant {
+  id                String    @id @default(uuid()) @db.Uuid
+  organizationId    String    @map("organization_id") @db.Uuid
+  firstName         String    @map("first_name") @db.VarChar(100)
+  lastName          String    @map("last_name") @db.VarChar(100)
+  phone             String?   @db.VarChar(30)
+  email             String?   @db.VarChar(255)
+  address           String?   @db.VarChar(255)
+  profession        String?   @db.VarChar(100)
+  birthDate         DateTime? @map("birth_date") @db.Date
+  photoUrl          String?   @map("photo_url")
+  idDocType         String?   @map("id_doc_type") @db.VarChar(30)
+  idDocNumber       String?   @map("id_doc_number") @db.VarChar(50)
+  idDocFileUrl      String?   @map("id_doc_file_url")
+  emergencyContact  String?   @map("emergency_contact") @db.VarChar(255)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt         DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  contracts Contract[]
+
+  @@map("tenants")
+}
+
+model Contract {
+  id                String    @id @default(uuid()) @db.Uuid
+  organizationId    String    @map("organization_id") @db.Uuid
+  unitId            String    @map("unit_id") @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  startDate         DateTime  @map("start_date") @db.Date
+  endDate           DateTime? @map("end_date") @db.Date
+  rentAmount        Decimal   @map("rent_amount") @db.Decimal(14, 2)
+  depositAmount     Decimal?  @map("deposit_amount") @db.Decimal(14, 2)
+  paymentFrequency  String    @default("monthly") @map("payment_frequency") @db.VarChar(20)
+  dueDay            Int       @default(5) @map("due_day")
+  terms             String?
+  status            String    @default("active") @db.VarChar(20)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  unit         Unit           @relation(fields: [unitId], references: [id])
+  tenant       Tenant         @relation(fields: [tenantId], references: [id])
+  guarantors   Guarantor[]
+  rentRevisions RentRevision[]
+  invoices     Invoice[]
+  payments     Payment[]
+
+  @@map("contracts")
+}
+
+model Guarantor {
+  id                String   @id @default(uuid()) @db.Uuid
+  contractId        String   @map("contract_id") @db.Uuid
+  fullName          String   @map("full_name") @db.VarChar(255)
+  phone             String?  @db.VarChar(30)
+  address           String?  @db.VarChar(255)
+  profession        String?  @db.VarChar(100)
+  idDocType         String?  @map("id_doc_type") @db.VarChar(30)
+  idDocNumber       String?  @map("id_doc_number") @db.VarChar(50)
+  idDocFileUrl      String?  @map("id_doc_file_url")
+  guaranteedAmount  Decimal? @map("guaranteed_amount") @db.Decimal(14, 2)
+  relationship      String?  @db.VarChar(100)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  contract Contract @relation(fields: [contractId], references: [id])
+
+  @@map("guarantors")
+}
+
+model RentRevision {
+  id              String   @id @default(uuid()) @db.Uuid
+  contractId      String   @map("contract_id") @db.Uuid
+  effectiveDate   DateTime @map("effective_date") @db.Date
+  previousAmount  Decimal  @map("previous_amount") @db.Decimal(14, 2)
+  newAmount       Decimal  @map("new_amount") @db.Decimal(14, 2)
+  reason          String?  @db.VarChar(255)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  contract Contract @relation(fields: [contractId], references: [id])
+
+  @@map("rent_revisions")
+}
+
+model Invoice {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  contractId     String   @map("contract_id") @db.Uuid
+  periodStart    DateTime @map("period_start") @db.Date
+  periodEnd      DateTime @map("period_end") @db.Date
+  amount         Decimal  @db.Decimal(14, 2)
+  lateFeeAmount  Decimal  @default(0) @map("late_fee_amount") @db.Decimal(14, 2)
+  dueDate        DateTime @map("due_date") @db.Date
+  status         String   @default("pending") @db.VarChar(20)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  contract Contract  @relation(fields: [contractId], references: [id])
+  payments Payment[]
+
+  @@map("invoices")
+}
+
+model Payment {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  invoiceId      String   @map("invoice_id") @db.Uuid
+  contractId     String   @map("contract_id") @db.Uuid
+  amount         Decimal  @db.Decimal(14, 2)
+  paymentDate    DateTime @default(now()) @map("payment_date") @db.Timestamptz(6)
+  paymentMethod  String   @map("payment_method") @db.VarChar(30)
+  reference      String?  @db.VarChar(100)
+  recordedBy     String?  @map("recorded_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  invoice  Invoice  @relation(fields: [invoiceId], references: [id])
+  contract Contract @relation(fields: [contractId], references: [id])
+
+  @@map("payments")
+}
+
+model LateFeeRule {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  contractId       String?  @map("contract_id") @db.Uuid
+  calculationType  String   @map("calculation_type") @db.VarChar(20)
+  value            Decimal  @db.Decimal(10, 4)
+  gracePeriodDays  Int      @default(0) @map("grace_period_days")
+  capAmount        Decimal? @map("cap_amount") @db.Decimal(14, 2)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("late_fee_rules")
+}
+
+model PaymentMethod {
+  id                 String   @id @default(uuid()) @db.Uuid
+  organizationId     String?  @map("organization_id") @db.Uuid
+  code               String   @db.VarChar(30)
+  label              String   @db.VarChar(100)
+  requiresReference  Boolean  @default(false) @map("requires_reference")
+  isActive           Boolean  @default(true) @map("is_active")
+  sortOrder          Int      @default(0) @map("sort_order")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("payment_methods")
+}
+
+model AgencyCommissionRule {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  propertyId       String?  @map("property_id") @db.Uuid
+  ownerId          String?  @map("owner_id") @db.Uuid
+  ratePercentage   Decimal  @map("rate_percentage") @db.Decimal(5, 2)
+  calculationBase  String   @default("gross") @map("calculation_base") @db.VarChar(10)
+  frequency        String   @default("monthly") @db.VarChar(20)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  owner Owner? @relation(fields: [ownerId], references: [id])
+
+  @@map("agency_commission_rules")
+}
+
+model OwnerPayout {
+  id                  String    @id @default(uuid()) @db.Uuid
+  organizationId      String    @map("organization_id") @db.Uuid
+  ownerId             String    @map("owner_id") @db.Uuid
+  periodStart         DateTime  @map("period_start") @db.Date
+  periodEnd           DateTime  @map("period_end") @db.Date
+  grossRentCollected  Decimal   @default(0) @map("gross_rent_collected") @db.Decimal(14, 2)
+  commissionAmount    Decimal   @default(0) @map("commission_amount") @db.Decimal(14, 2)
+  expensesDeducted    Decimal   @default(0) @map("expenses_deducted") @db.Decimal(14, 2)
+  netAmount           Decimal   @default(0) @map("net_amount") @db.Decimal(14, 2)
+  status              String    @default("pending") @db.VarChar(20)
+  paidAt              DateTime? @map("paid_at") @db.Timestamptz(6)
+  statementPdfUrl     String?   @map("statement_pdf_url")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  owner Owner @relation(fields: [ownerId], references: [id])
+
+  @@map("owner_payouts")
+}
