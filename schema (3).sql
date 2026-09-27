@@ -102,6 +102,7 @@ CREATE TABLE units (
   area_sqm         numeric(8,2),
   description      text,
   rent_amount      numeric(14,2) NOT NULL,
+  currency         varchar(3) NOT NULL DEFAULT 'GNF',  -- correction Partie 4.2 v3.0 : devise par ligne, pas seulement sur les tables SaaS
   deposit_amount   numeric(14,2),
   status           varchar(20) NOT NULL DEFAULT 'available'
                      CHECK (status IN ('available','reserved','occupied','maintenance','out_of_service')),
@@ -190,6 +191,7 @@ CREATE TABLE contracts (
   start_date         date NOT NULL,
   end_date           date,
   rent_amount        numeric(14,2) NOT NULL,
+  currency           varchar(3) NOT NULL DEFAULT 'GNF',
   deposit_amount     numeric(14,2),
   payment_frequency  varchar(20) NOT NULL DEFAULT 'monthly'
                        CHECK (payment_frequency IN ('monthly','quarterly','semiannual','annual','custom')),
@@ -289,6 +291,7 @@ CREATE TABLE invoices (
   period_start     date NOT NULL,
   period_end       date NOT NULL,
   amount           numeric(14,2) NOT NULL,
+  currency         varchar(3) NOT NULL DEFAULT 'GNF',
   late_fee_amount  numeric(14,2) NOT NULL DEFAULT 0,
   due_date         date NOT NULL,
   status           varchar(20) NOT NULL DEFAULT 'pending'
@@ -315,6 +318,7 @@ CREATE TABLE payments (
   invoice_id       uuid NOT NULL REFERENCES invoices(id),
   contract_id      uuid NOT NULL REFERENCES contracts(id),
   amount           numeric(14,2) NOT NULL,
+  currency         varchar(3) NOT NULL DEFAULT 'GNF',
   payment_date     timestamptz NOT NULL DEFAULT now(),
   payment_method   varchar(30) NOT NULL,   -- especes, orange_money, mtn_momo, virement, carte, autre
   reference        varchar(100),
@@ -451,6 +455,7 @@ CREATE TABLE expenses (
   unit_id          uuid REFERENCES units(id),
   category         varchar(50) NOT NULL,
   amount           numeric(14,2) NOT NULL,
+  currency         varchar(3) NOT NULL DEFAULT 'GNF',
   expense_date     date NOT NULL,
   description      text,
   receipt_url      text,

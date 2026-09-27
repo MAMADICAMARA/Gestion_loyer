@@ -101,6 +101,7 @@ model Unit {
   areaSqm        Decimal?  @map("area_sqm") @db.Decimal(8, 2)
   description    String?
   rentAmount     Decimal   @map("rent_amount") @db.Decimal(14, 2)
+  currency       String    @default("GNF") @db.VarChar(3)
   depositAmount  Decimal?  @map("deposit_amount") @db.Decimal(14, 2)
   status         String    @default("available") @db.VarChar(20)
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -145,6 +146,7 @@ model Contract {
   startDate         DateTime  @map("start_date") @db.Date
   endDate           DateTime? @map("end_date") @db.Date
   rentAmount        Decimal   @map("rent_amount") @db.Decimal(14, 2)
+  currency          String    @default("GNF") @db.VarChar(3)
   depositAmount     Decimal?  @map("deposit_amount") @db.Decimal(14, 2)
   paymentFrequency  String    @default("monthly") @map("payment_frequency") @db.VarChar(20)
   dueDay            Int       @default(5) @map("due_day")
@@ -203,6 +205,7 @@ model Invoice {
   periodStart    DateTime @map("period_start") @db.Date
   periodEnd      DateTime @map("period_end") @db.Date
   amount         Decimal  @db.Decimal(14, 2)
+  currency       String   @default("GNF") @db.VarChar(3)
   lateFeeAmount  Decimal  @default(0) @map("late_fee_amount") @db.Decimal(14, 2)
   dueDate        DateTime @map("due_date") @db.Date
   status         String   @default("pending") @db.VarChar(20)
@@ -220,6 +223,7 @@ model Payment {
   invoiceId      String   @map("invoice_id") @db.Uuid
   contractId     String   @map("contract_id") @db.Uuid
   amount         Decimal  @db.Decimal(14, 2)
+  currency       String   @default("GNF") @db.VarChar(3)
   paymentDate    DateTime @default(now()) @map("payment_date") @db.Timestamptz(6)
   paymentMethod  String   @map("payment_method") @db.VarChar(30)
   reference      String?  @db.VarChar(100)
