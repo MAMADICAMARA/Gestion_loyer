@@ -6,6 +6,7 @@ import {
   ApiError,
   getInvoice,
   listPaymentMethods,
+  openPaymentReceipt,
   recordPayment,
   type Invoice,
   type InvoiceStatus,
@@ -39,6 +40,9 @@ export default function InvoiceDetailPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
+
   function reload() {
     getInvoice(params.id)
       .then((inv) => {
@@ -56,6 +60,18 @@ export default function InvoiceDetailPage() {
   }, []);
 
   const selectedMethod = methods.find((m) => m.code === methodCode);
+
+  async function handleReceipt(paymentId: string) {
+    setReceiptError(null);
+    setReceiptLoadingId(paymentId);
+    try {
+      await openPaymentReceipt(params.id, paymentId);
+    } catch (err) {
+      setReceiptError(err instanceof ApiError ? err.message : "Impossible de générer le reçu.");
+    } finally {
+      setReceiptLoadingId(null);
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -134,14 +150,25 @@ export default function InvoiceDetailPage() {
           <div className="mt-4 pt-3 border-t border-paper-2">
             <h3 className="text-xs font-bold text-sub uppercase mb-2">Historique</h3>
             {invoice.payments.map((p) => (
-              <div key={p.id} className="flex flex-wrap justify-between gap-x-3 text-sm py-1">
+              <div key={p.id} className="flex flex-wrap justify-between items-center gap-x-3 text-sm py-1">
                 <span className="text-sub">
                   {new Date(p.paymentDate).toLocaleDateString("fr-FR")} · {p.paymentMethod}
                   {p.reference ? ` (${p.reference})` : ""}
                 </span>
-                <span className="font-mono text-ink">{fmt(p.amount)} GNF</span>
+                <span className="flex items-center gap-3">
+                  <span className="font-mono text-ink">{fmt(p.amount)} GNF</span>
+                  <button
+                    type="button"
+                    onClick={() => handleReceipt(p.id)}
+                    disabled={receiptLoadingId === p.id}
+                    className="text-xs font-semibold text-indigo hover:underline disabled:opacity-60"
+                  >
+                    {receiptLoadingId === p.id ? "…" : "Reçu"}
+                  </button>
+                </span>
               </div>
             ))}
+            {receiptError && <p className="text-xs text-critical mt-2">{receiptError}</p>}
           </div>
         )}
 

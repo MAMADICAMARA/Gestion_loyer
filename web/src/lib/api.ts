@@ -400,6 +400,25 @@ export function listPaymentMethods() {
   return apiFetch<PaymentMethod[]>("/api/payment-methods");
 }
 
+// Ouvre le reçu PDF d'un paiement dans un nouvel onglet (impression/partage
+// natifs du navigateur — cf. cahier des charges, module "Reçus de paiement").
+// Contrairement à apiFetch, la réponse est un flux binaire (application/pdf),
+// pas du JSON — on ne peut pas simplement passer par un <a href>, l'API
+// exige le jeton en en-tête Authorization.
+export async function openPaymentReceipt(invoiceId: string, paymentId: string): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/api/invoices/${invoiceId}/payments/${paymentId}/receipt`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError(body?.code ?? "unknown_error", body?.message ?? "Impossible de générer le reçu.");
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+}
+
 export interface DashboardSummary {
   propertiesTotal: number;
   unitsTotal: number;
