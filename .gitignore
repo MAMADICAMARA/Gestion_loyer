@@ -8,6 +8,10 @@ web/out/
 # Build API
 api/dist/
 
+# Stockage objet local (fallback dev — cf. api/src/lib/storage.ts) :
+# jamais de fichier utilisateur commité, jamais de secret de signature.
+api/uploads/
+
 # Environnement — ne jamais committer de secrets
 .env
 .env.local

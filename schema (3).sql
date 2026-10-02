@@ -473,7 +473,8 @@ CREATE TABLE documents (
   organization_id  uuid NOT NULL REFERENCES organizations(id),
   related_type     varchar(30) NOT NULL,   -- 'contract' | 'tenant' | 'expense' | 'maintenance_request' ...
   related_id       uuid NOT NULL,
-  file_url         text NOT NULL,
+  file_name        varchar(255) NOT NULL,  -- nom d'origine à l'upload, absent du modèle initial
+  file_url         text NOT NULL,          -- clé de stockage objet (pas une URL persistée : signée à la demande)
   file_type        varchar(30),
   uploaded_by      uuid REFERENCES users(id),
   created_at       timestamptz NOT NULL DEFAULT now()
@@ -723,6 +724,13 @@ CREATE POLICY tenant_isolation ON late_fee_rules
 -- requête applicative mal filtrée d'exposer le journal d'une autre agence.
 ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON activity_logs
+  USING (organization_id = current_org_id());
+
+-- Documents (contrats, pièces d'identité, reçus, justificatifs, photos —
+-- jamais stockés en base, stockage objet) : même trou que owners/
+-- activity_logs avant correction, organization_id sans policy RLS.
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON documents
   USING (organization_id = current_org_id());
 
 -- organization_id NULL = moyen de paiement global, visible par toutes les

@@ -477,6 +477,52 @@ export function listActivityLogs(params?: PageParams) {
   return apiFetch<Paginated<ActivityLog>>(`/api/activity-logs${pageQuery(params)}`);
 }
 
+export type RelatedType = "tenant" | "contract" | "guarantor" | "property" | "owner";
+
+export interface AppDocument {
+  id: string;
+  relatedType: RelatedType;
+  relatedId: string;
+  fileName: string;
+  fileType: string | null;
+  createdAt: string;
+  downloadUrl: string;
+}
+
+export function listDocuments(relatedType: RelatedType, relatedId: string) {
+  return apiFetch<AppDocument[]>(`/api/documents?relatedType=${relatedType}&relatedId=${relatedId}`);
+}
+
+// Upload multipart — ne peut pas passer par apiFetch() : celui-ci force
+// Content-Type: application/json, alors qu'un FormData a besoin que le
+// navigateur pose lui-même l'en-tête multipart avec sa boundary.
+export async function uploadDocument(
+  relatedType: RelatedType,
+  relatedId: string,
+  file: File
+): Promise<AppDocument> {
+  const token = getToken();
+  const form = new FormData();
+  form.append("relatedType", relatedType);
+  form.append("relatedId", relatedId);
+  form.append("file", file);
+
+  const res = await fetch(`${API_URL}/api/documents`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(body?.code ?? "unknown_error", body?.message ?? "Échec de l'envoi du fichier.");
+  }
+  return body as AppDocument;
+}
+
+export function deleteDocument(id: string) {
+  return apiFetch<void>(`/api/documents/${id}`, { method: "DELETE" });
+}
+
 export function createUnit(
   propertyId: string,
   data: {

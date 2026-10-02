@@ -17,6 +17,7 @@ import {
 } from "@/lib/api";
 import { CardIcon, PlusIcon, ShieldIcon } from "@/components/icons";
 import { Modal } from "@/components/Modal";
+import { DocumentsPanel } from "@/components/DocumentsPanel";
 
 const STATUS_LABEL: Record<ContractStatus, { label: string; className: string }> = {
   draft: { label: "Brouillon", className: "bg-paper-2 text-sub" },
@@ -281,6 +282,10 @@ export default function ContractDetailPage() {
             })}
           </div>
         )}
+      </div>
+
+      <div className="mt-4">
+        <DocumentsPanel relatedType="contract" relatedId={contract.id} />
       </div>
 
       {contract.status === "active" && (

@@ -16,6 +16,7 @@ import { ownerPayoutsRouter, payoutsRouter } from "./routes/payouts";
 import { portalRouter } from "./routes/portal";
 import { usersRouter } from "./routes/users";
 import { activityLogsRouter } from "./routes/activityLogs";
+import { documentsRawRouter, documentsRouter } from "./routes/documents";
 
 const app = express();
 
@@ -27,6 +28,13 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRouter);
+
+// Stockage objet local (dev/démo, cf. lib/storage.ts) : volontairement SANS
+// requireAuth, monté AVANT /api/documents ci-dessous pour intercepter
+// /api/documents/raw/* en premier — la signature HMAC + expiration dans
+// l'URL font office d'autorisation, exactement comme une URL S3 présignée.
+// No-op (404) si S3_BUCKET est configuré.
+app.use("/api/documents", documentsRawRouter);
 
 // Le portail owner_viewer a sa propre portée (routes/portal.ts) — jamais le
 // garde-fou agence ci-dessous, qui l'exclut justement.
@@ -55,6 +63,7 @@ app.use("/api/users", requireAuth, requireAgencyStaff, usersRouter);
 // Journal d'activité : même périmètre que la gestion des utilisateurs dans
 // la matrice de permissions (Partie 2) — owner/admin uniquement.
 app.use("/api/activity-logs", requireAuth, requireAgencyStaff, requireRole("owner", "admin"), activityLogsRouter);
+app.use("/api/documents", requireAuth, requireAgencyStaff, documentsRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ code: "not_found", message: "Ressource introuvable." });
