@@ -153,6 +153,7 @@ model Contract {
   dueDay            Int       @default(5) @map("due_day")
   terms             String?
   status            String    @default("active") @db.VarChar(20)
+  terminationReason String?   @map("termination_reason") @db.VarChar(50)
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
 
@@ -326,4 +327,14 @@ model Document {
 
   @@index([relatedType, relatedId])
   @@map("documents")
+}
+
+model OrganizationSettings {
+  organizationId     String   @id @map("organization_id") @db.Uuid
+  noticePeriodDays   Int      @default(90) @map("notice_period_days")
+  depositCapMonths   Decimal? @map("deposit_cap_months") @db.Decimal(4, 2)
+  terminationReasons Json     @map("termination_reasons")
+  updatedAt          DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("organization_settings")
 }

@@ -199,6 +199,7 @@ CREATE TABLE contracts (
   terms              text,
   status             varchar(20) NOT NULL DEFAULT 'active'
                        CHECK (status IN ('draft','active','suspended','terminated','expired')),
+  termination_reason varchar(50),  -- posé à la résiliation, validé contre organization_settings.termination_reasons
   created_at         timestamptz NOT NULL DEFAULT now(),
   updated_at         timestamptz NOT NULL DEFAULT now()
 );
@@ -520,6 +521,22 @@ CREATE TABLE activity_logs (
 );
 CREATE INDEX idx_activity_logs_organization_id ON activity_logs(organization_id, created_at DESC);
 
+-- Conformité légale locale (A12) : préavis, plafond de caution, motifs de
+-- résiliation — valeurs par défaut à valider avec un juriste guinéen avant
+-- la mise en production, et TOUJOURS configurables par organisation plutôt
+-- que codées en dur (cf. cahier des charges, Partie 6). Une seule ligne par
+-- organisation ; absente = valeurs par défaut appliquées côté application
+-- (api/src/routes/settings.ts), pas de backfill nécessaire.
+CREATE TABLE organization_settings (
+  organization_id      uuid PRIMARY KEY REFERENCES organizations(id),
+  notice_period_days   integer NOT NULL DEFAULT 90,
+  deposit_cap_months   numeric(4,2),  -- NULL = aucun plafond appliqué
+  termination_reasons  jsonb NOT NULL DEFAULT '["impaye","faute_grave","vente_bien","reprise_proprietaire","fin_de_contrat","autre"]',
+  updated_at           timestamptz NOT NULL DEFAULT now()
+);
+CREATE TRIGGER trg_organization_settings_updated_at BEFORE UPDATE ON organization_settings
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
 -- ============================================================
 -- 8. MODÈLE SAAS : ABONNEMENTS, FACTURATION PLATEFORME, PAIEMENTS MOBILES
 -- ============================================================
@@ -731,6 +748,10 @@ CREATE POLICY tenant_isolation ON activity_logs
 -- activity_logs avant correction, organization_id sans policy RLS.
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON documents
+  USING (organization_id = current_org_id());
+
+ALTER TABLE organization_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON organization_settings
   USING (organization_id = current_org_id());
 
 -- organization_id NULL = moyen de paiement global, visible par toutes les

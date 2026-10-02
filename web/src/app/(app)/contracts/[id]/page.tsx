@@ -8,16 +8,19 @@ import {
   createGuarantor,
   generateInvoice,
   getContract,
+  getLegalSettings,
   listContractInvoices,
   updateContractStatus,
   type Contract,
   type ContractStatus,
   type Invoice,
   type InvoiceStatus,
+  type LegalSettings,
 } from "@/lib/api";
 import { CardIcon, PlusIcon, ShieldIcon } from "@/components/icons";
 import { Modal } from "@/components/Modal";
 import { DocumentsPanel } from "@/components/DocumentsPanel";
+import { reasonLabel } from "@/lib/legalReasons";
 
 const STATUS_LABEL: Record<ContractStatus, { label: string; className: string }> = {
   draft: { label: "Brouillon", className: "bg-paper-2 text-sub" },
@@ -52,6 +55,12 @@ export default function ContractDetailPage() {
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
 
+  const [legal, setLegal] = useState<LegalSettings | null>(null);
+  const [showTerminateModal, setShowTerminateModal] = useState(false);
+  const [terminationReason, setTerminationReason] = useState("");
+  const [terminateError, setTerminateError] = useState<string | null>(null);
+  const [terminating, setTerminating] = useState(false);
+
   function reload() {
     getContract(params.id)
       .then(setContract)
@@ -64,6 +73,14 @@ export default function ContractDetailPage() {
 
   useEffect(reload, [params.id]);
   useEffect(reloadInvoices, [params.id]);
+  useEffect(() => {
+    getLegalSettings()
+      .then((s) => {
+        setLegal(s);
+        setTerminationReason(s.terminationReasons[0] ?? "");
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleGenerateInvoice() {
     setInvoiceError(null);
@@ -103,10 +120,18 @@ export default function ContractDetailPage() {
     }
   }
 
-  async function handleTerminate() {
-    if (!confirm("Résilier ce contrat ? Le local redeviendra disponible.")) return;
-    await updateContractStatus(params.id, "terminated");
-    reload();
+  async function handleConfirmTerminate() {
+    setTerminateError(null);
+    setTerminating(true);
+    try {
+      await updateContractStatus(params.id, "terminated", terminationReason);
+      setShowTerminateModal(false);
+      reload();
+    } catch (err) {
+      setTerminateError(err instanceof ApiError ? err.message : "Une erreur est survenue.");
+    } finally {
+      setTerminating(false);
+    }
   }
 
   if (error) return <div className="p-4 sm:p-8 text-sm text-critical">{error}</div>;
@@ -145,6 +170,12 @@ export default function ContractDetailPage() {
           <span className="text-ink">{new Date(contract.startDate).toLocaleDateString("fr-FR")}</span>
           <span className="text-sub">Jour d&apos;échéance</span>
           <span className="text-ink">Le {contract.dueDay} du mois</span>
+          {legal && (
+            <>
+              <span className="text-sub">Préavis requis</span>
+              <span className="text-ink">{legal.noticePeriodDays} jours</span>
+            </>
+          )}
         </div>
       </div>
 
@@ -290,12 +321,43 @@ export default function ContractDetailPage() {
 
       {contract.status === "active" && (
         <button
-          onClick={handleTerminate}
+          onClick={() => setShowTerminateModal(true)}
           className="mt-4 text-sm font-semibold text-critical hover:underline"
         >
           Résilier le contrat
         </button>
       )}
+
+      <Modal open={showTerminateModal} onClose={() => setShowTerminateModal(false)} title="Résilier le contrat">
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-sub">
+            Le local redeviendra disponible. Un motif de résiliation est requis (A12, cahier des charges).
+          </p>
+          <div>
+            <label className="block text-xs font-semibold text-sub mb-1.5">Motif</label>
+            <select
+              value={terminationReason}
+              onChange={(e) => setTerminationReason(e.target.value)}
+              className="w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-laterite focus:ring-2 focus:ring-laterite/20"
+            >
+              {(legal?.terminationReasons ?? []).map((code) => (
+                <option key={code} value={code}>
+                  {reasonLabel(code)}
+                </option>
+              ))}
+            </select>
+          </div>
+          {terminateError && <p className="text-sm text-critical">{terminateError}</p>}
+          <button
+            type="button"
+            onClick={handleConfirmTerminate}
+            disabled={terminating || !terminationReason}
+            className="rounded-lg bg-critical text-white text-sm font-semibold px-4 py-2.5 hover:opacity-90 transition disabled:opacity-60"
+          >
+            {terminating ? "Résiliation…" : "Confirmer la résiliation"}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

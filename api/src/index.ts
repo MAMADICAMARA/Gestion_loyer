@@ -17,6 +17,7 @@ import { portalRouter } from "./routes/portal";
 import { usersRouter } from "./routes/users";
 import { activityLogsRouter } from "./routes/activityLogs";
 import { documentsRawRouter, documentsRouter } from "./routes/documents";
+import { settingsRouter } from "./routes/settings";
 
 const app = express();
 
@@ -64,6 +65,9 @@ app.use("/api/users", requireAuth, requireAgencyStaff, usersRouter);
 // la matrice de permissions (Partie 2) — owner/admin uniquement.
 app.use("/api/activity-logs", requireAuth, requireAgencyStaff, requireRole("owner", "admin"), activityLogsRouter);
 app.use("/api/documents", requireAuth, requireAgencyStaff, documentsRouter);
+// Conformité légale locale (A12) : GET ouvert à tout le personnel agence,
+// PATCH réservé owner/admin (vérifié route par route dans settings.ts).
+app.use("/api/settings", requireAuth, requireAgencyStaff, settingsRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ code: "not_found", message: "Ressource introuvable." });

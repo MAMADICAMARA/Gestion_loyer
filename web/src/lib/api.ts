@@ -322,8 +322,11 @@ export function getContract(id: string) {
   return apiFetch<Contract>(`/api/contracts/${id}`);
 }
 
-export function updateContractStatus(id: string, status: ContractStatus) {
-  return apiFetch<Contract>(`/api/contracts/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
+export function updateContractStatus(id: string, status: ContractStatus, terminationReason?: string) {
+  return apiFetch<Contract>(`/api/contracts/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, terminationReason }),
+  });
 }
 
 export function createGuarantor(
@@ -521,6 +524,20 @@ export async function uploadDocument(
 
 export function deleteDocument(id: string) {
   return apiFetch<void>(`/api/documents/${id}`, { method: "DELETE" });
+}
+
+export interface LegalSettings {
+  noticePeriodDays: number;
+  depositCapMonths: number | null;
+  terminationReasons: string[];
+}
+
+export function getLegalSettings() {
+  return apiFetch<LegalSettings>("/api/settings/legal");
+}
+
+export function updateLegalSettings(data: LegalSettings) {
+  return apiFetch<LegalSettings>("/api/settings/legal", { method: "PATCH", body: JSON.stringify(data) });
 }
 
 export function createUnit(
