@@ -322,8 +322,11 @@ export function getContract(id: string) {
   return apiFetch<Contract>(`/api/contracts/${id}`);
 }
 
-export function updateContractStatus(id: string, status: ContractStatus) {
-  return apiFetch<Contract>(`/api/contracts/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
+export function updateContractStatus(id: string, status: ContractStatus, terminationReason?: string) {
+  return apiFetch<Contract>(`/api/contracts/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, terminationReason }),
+  });
 }
 
 export function createGuarantor(
@@ -400,6 +403,25 @@ export function listPaymentMethods() {
   return apiFetch<PaymentMethod[]>("/api/payment-methods");
 }
 
+// Ouvre le reçu PDF d'un paiement dans un nouvel onglet (impression/partage
+// natifs du navigateur — cf. cahier des charges, module "Reçus de paiement").
+// Contrairement à apiFetch, la réponse est un flux binaire (application/pdf),
+// pas du JSON — on ne peut pas simplement passer par un <a href>, l'API
+// exige le jeton en en-tête Authorization.
+export async function openPaymentReceipt(invoiceId: string, paymentId: string): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/api/invoices/${invoiceId}/payments/${paymentId}/receipt`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError(body?.code ?? "unknown_error", body?.message ?? "Impossible de générer le reçu.");
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+}
+
 export interface DashboardSummary {
   propertiesTotal: number;
   unitsTotal: number;
@@ -440,6 +462,82 @@ export function createTenant(data: TenantInput) {
 
 export function getTenant(id: string) {
   return apiFetch<Tenant>(`/api/tenants/${id}`);
+}
+
+export type ActivityAction = "create" | "update" | "delete";
+
+export interface ActivityLog {
+  id: string;
+  action: ActivityAction;
+  entityType: string;
+  entityId: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  user: { email: string } | null;
+}
+
+export function listActivityLogs(params?: PageParams) {
+  return apiFetch<Paginated<ActivityLog>>(`/api/activity-logs${pageQuery(params)}`);
+}
+
+export type RelatedType = "tenant" | "contract" | "guarantor" | "property" | "owner";
+
+export interface AppDocument {
+  id: string;
+  relatedType: RelatedType;
+  relatedId: string;
+  fileName: string;
+  fileType: string | null;
+  createdAt: string;
+  downloadUrl: string;
+}
+
+export function listDocuments(relatedType: RelatedType, relatedId: string) {
+  return apiFetch<AppDocument[]>(`/api/documents?relatedType=${relatedType}&relatedId=${relatedId}`);
+}
+
+// Upload multipart — ne peut pas passer par apiFetch() : celui-ci force
+// Content-Type: application/json, alors qu'un FormData a besoin que le
+// navigateur pose lui-même l'en-tête multipart avec sa boundary.
+export async function uploadDocument(
+  relatedType: RelatedType,
+  relatedId: string,
+  file: File
+): Promise<AppDocument> {
+  const token = getToken();
+  const form = new FormData();
+  form.append("relatedType", relatedType);
+  form.append("relatedId", relatedId);
+  form.append("file", file);
+
+  const res = await fetch(`${API_URL}/api/documents`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(body?.code ?? "unknown_error", body?.message ?? "Échec de l'envoi du fichier.");
+  }
+  return body as AppDocument;
+}
+
+export function deleteDocument(id: string) {
+  return apiFetch<void>(`/api/documents/${id}`, { method: "DELETE" });
+}
+
+export interface LegalSettings {
+  noticePeriodDays: number;
+  depositCapMonths: number | null;
+  terminationReasons: string[];
+}
+
+export function getLegalSettings() {
+  return apiFetch<LegalSettings>("/api/settings/legal");
+}
+
+export function updateLegalSettings(data: LegalSettings) {
+  return apiFetch<LegalSettings>("/api/settings/legal", { method: "PATCH", body: JSON.stringify(data) });
 }
 
 export function createUnit(

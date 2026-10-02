@@ -2,7 +2,7 @@ import "dotenv/config";
 import cors from "cors";
 import express, { NextFunction, Request, Response } from "express";
 import { authRouter } from "./routes/auth";
-import { requireAgencyStaff, requireAuth } from "./middleware/auth";
+import { requireAgencyStaff, requireAuth, requireRole } from "./middleware/auth";
 import { ownersRouter } from "./routes/owners";
 import { propertiesRouter } from "./routes/properties";
 import { propertyUnitsRouter, unitsRouter } from "./routes/units";
@@ -15,6 +15,9 @@ import { dashboardRouter } from "./routes/dashboard";
 import { ownerPayoutsRouter, payoutsRouter } from "./routes/payouts";
 import { portalRouter } from "./routes/portal";
 import { usersRouter } from "./routes/users";
+import { activityLogsRouter } from "./routes/activityLogs";
+import { documentsRawRouter, documentsRouter } from "./routes/documents";
+import { settingsRouter } from "./routes/settings";
 
 const app = express();
 
@@ -26,6 +29,13 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRouter);
+
+// Stockage objet local (dev/démo, cf. lib/storage.ts) : volontairement SANS
+// requireAuth, monté AVANT /api/documents ci-dessous pour intercepter
+// /api/documents/raw/* en premier — la signature HMAC + expiration dans
+// l'URL font office d'autorisation, exactement comme une URL S3 présignée.
+// No-op (404) si S3_BUCKET est configuré.
+app.use("/api/documents", documentsRawRouter);
 
 // Le portail owner_viewer a sa propre portée (routes/portal.ts) — jamais le
 // garde-fou agence ci-dessous, qui l'exclut justement.
@@ -51,6 +61,13 @@ app.use("/api/invoices", requireAuth, requireAgencyStaff, invoicesRouter);
 app.use("/api/payment-methods", requireAuth, requireAgencyStaff, paymentMethodsRouter);
 app.use("/api/dashboard", requireAuth, requireAgencyStaff, dashboardRouter);
 app.use("/api/users", requireAuth, requireAgencyStaff, usersRouter);
+// Journal d'activité : même périmètre que la gestion des utilisateurs dans
+// la matrice de permissions (Partie 2) — owner/admin uniquement.
+app.use("/api/activity-logs", requireAuth, requireAgencyStaff, requireRole("owner", "admin"), activityLogsRouter);
+app.use("/api/documents", requireAuth, requireAgencyStaff, documentsRouter);
+// Conformité légale locale (A12) : GET ouvert à tout le personnel agence,
+// PATCH réservé owner/admin (vérifié route par route dans settings.ts).
+app.use("/api/settings", requireAuth, requireAgencyStaff, settingsRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ code: "not_found", message: "Ressource introuvable." });

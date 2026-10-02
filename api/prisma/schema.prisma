@@ -49,6 +49,7 @@ model User {
   updatedAt         DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   organization Organization @relation(fields: [organizationId], references: [id])
+  activityLogs ActivityLog[]
 
   @@map("users")
 }
@@ -101,6 +102,7 @@ model Unit {
   areaSqm        Decimal?  @map("area_sqm") @db.Decimal(8, 2)
   description    String?
   rentAmount     Decimal   @map("rent_amount") @db.Decimal(14, 2)
+  currency       String    @default("GNF") @db.VarChar(3)
   depositAmount  Decimal?  @map("deposit_amount") @db.Decimal(14, 2)
   status         String    @default("available") @db.VarChar(20)
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -145,11 +147,13 @@ model Contract {
   startDate         DateTime  @map("start_date") @db.Date
   endDate           DateTime? @map("end_date") @db.Date
   rentAmount        Decimal   @map("rent_amount") @db.Decimal(14, 2)
+  currency          String    @default("GNF") @db.VarChar(3)
   depositAmount     Decimal?  @map("deposit_amount") @db.Decimal(14, 2)
   paymentFrequency  String    @default("monthly") @map("payment_frequency") @db.VarChar(20)
   dueDay            Int       @default(5) @map("due_day")
   terms             String?
   status            String    @default("active") @db.VarChar(20)
+  terminationReason String?   @map("termination_reason") @db.VarChar(50)
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
 
@@ -203,6 +207,7 @@ model Invoice {
   periodStart    DateTime @map("period_start") @db.Date
   periodEnd      DateTime @map("period_end") @db.Date
   amount         Decimal  @db.Decimal(14, 2)
+  currency       String   @default("GNF") @db.VarChar(3)
   lateFeeAmount  Decimal  @default(0) @map("late_fee_amount") @db.Decimal(14, 2)
   dueDate        DateTime @map("due_date") @db.Date
   status         String   @default("pending") @db.VarChar(20)
@@ -220,6 +225,7 @@ model Payment {
   invoiceId      String   @map("invoice_id") @db.Uuid
   contractId     String   @map("contract_id") @db.Uuid
   amount         Decimal  @db.Decimal(14, 2)
+  currency       String   @default("GNF") @db.VarChar(3)
   paymentDate    DateTime @default(now()) @map("payment_date") @db.Timestamptz(6)
   paymentMethod  String   @map("payment_method") @db.VarChar(30)
   reference      String?  @db.VarChar(100)
@@ -291,4 +297,44 @@ model OwnerPayout {
   owner Owner @relation(fields: [ownerId], references: [id])
 
   @@map("owner_payouts")
+}
+
+model ActivityLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String?  @map("user_id") @db.Uuid
+  action         String   @db.VarChar(50)
+  entityType     String   @map("entity_type") @db.VarChar(50)
+  entityId       String?  @map("entity_id") @db.Uuid
+  metadata       Json?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("activity_logs")
+}
+
+model Document {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  relatedType    String   @map("related_type") @db.VarChar(30)
+  relatedId      String   @map("related_id") @db.Uuid
+  fileName       String   @map("file_name") @db.VarChar(255)
+  fileUrl        String   @map("file_url") // clé de stockage objet, pas une URL persistée
+  fileType       String?  @map("file_type") @db.VarChar(30)
+  uploadedBy     String?  @map("uploaded_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([relatedType, relatedId])
+  @@map("documents")
+}
+
+model OrganizationSettings {
+  organizationId     String   @id @map("organization_id") @db.Uuid
+  noticePeriodDays   Int      @default(90) @map("notice_period_days")
+  depositCapMonths   Decimal? @map("deposit_cap_months") @db.Decimal(4, 2)
+  terminationReasons Json     @map("termination_reasons")
+  updatedAt          DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("organization_settings")
 }

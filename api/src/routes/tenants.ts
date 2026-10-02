@@ -4,6 +4,7 @@ import { requireRole } from "../middleware/auth";
 import { withOrgContext } from "../lib/withOrgContext";
 import { asyncHandler } from "../lib/asyncHandler";
 import { parsePagination, paginate } from "../lib/pagination";
+import { logActivity } from "../lib/activityLog";
 
 export const tenantsRouter = Router();
 
@@ -58,15 +59,24 @@ tenantsRouter.post(
     }
 
     const { birthDate, ...fields } = parsed.data;
-    const tenant = await withOrgContext(req.auth!.organizationId, (tx) =>
-      tx.tenant.create({
+    const tenant = await withOrgContext(req.auth!.organizationId, async (tx) => {
+      const created = await tx.tenant.create({
         data: {
           organizationId: req.auth!.organizationId,
           ...fields,
           ...(birthDate ? { birthDate: new Date(birthDate) } : {}),
         },
-      })
-    );
+      });
+      await logActivity(tx, {
+        organizationId: req.auth!.organizationId,
+        userId: req.auth!.userId,
+        action: "create",
+        entityType: "tenant",
+        entityId: created.id,
+        metadata: { firstName: created.firstName, lastName: created.lastName },
+      });
+      return created;
+    });
     res.status(201).json(tenant);
   })
 );
@@ -93,12 +103,22 @@ tenantsRouter.patch(
       return res.status(400).json({ code: "invalid_input", message: "Champs de locataire invalides." });
     }
 
-    const result = await withOrgContext(req.auth!.organizationId, (tx) =>
-      tx.tenant.updateMany({
+    const result = await withOrgContext(req.auth!.organizationId, async (tx) => {
+      const updated = await tx.tenant.updateMany({
         where: { id: req.params.id, deletedAt: null },
         data: toPrismaData(parsed.data),
-      })
-    );
+      });
+      if (updated.count > 0) {
+        await logActivity(tx, {
+          organizationId: req.auth!.organizationId,
+          userId: req.auth!.userId,
+          action: "update",
+          entityType: "tenant",
+          entityId: req.params.id,
+        });
+      }
+      return updated;
+    });
     if (result.count === 0) {
       return res.status(404).json({ code: "not_found", message: "Locataire introuvable." });
     }
@@ -112,12 +132,22 @@ tenantsRouter.delete(
   "/:id",
   requireRole("owner", "admin", "manager", "agent"),
   asyncHandler(async (req, res) => {
-    const result = await withOrgContext(req.auth!.organizationId, (tx) =>
-      tx.tenant.updateMany({
+    const result = await withOrgContext(req.auth!.organizationId, async (tx) => {
+      const deleted = await tx.tenant.updateMany({
         where: { id: req.params.id, deletedAt: null },
         data: { deletedAt: new Date() },
-      })
-    );
+      });
+      if (deleted.count > 0) {
+        await logActivity(tx, {
+          organizationId: req.auth!.organizationId,
+          userId: req.auth!.userId,
+          action: "delete",
+          entityType: "tenant",
+          entityId: req.params.id,
+        });
+      }
+      return deleted;
+    });
     if (result.count === 0) {
       return res.status(404).json({ code: "not_found", message: "Locataire introuvable." });
     }

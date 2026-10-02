@@ -5,6 +5,7 @@ import { requireRole } from "../middleware/auth";
 import { withOrgContext } from "../lib/withOrgContext";
 import { asyncHandler } from "../lib/asyncHandler";
 import { parsePagination, paginate } from "../lib/pagination";
+import { logActivity } from "../lib/activityLog";
 
 export const usersRouter = Router();
 
@@ -78,7 +79,7 @@ usersRouter.post(
       if (existing) return null;
 
       const passwordHash = await bcrypt.hash(parsed.data.password, 10);
-      return tx.user.create({
+      const created = await tx.user.create({
         data: {
           organizationId: req.auth!.organizationId,
           email: parsed.data.email,
@@ -88,6 +89,15 @@ usersRouter.post(
         },
         select: { id: true, email: true, role: true, isActive: true, createdAt: true },
       });
+      await logActivity(tx, {
+        organizationId: req.auth!.organizationId,
+        userId: req.auth!.userId,
+        action: "create",
+        entityType: "user",
+        entityId: created.id,
+        metadata: { email: created.email, role: created.role },
+      });
+      return created;
     });
 
     if (!result) {
@@ -117,16 +127,27 @@ usersRouter.patch(
       return res.status(400).json({ code: "cannot_self_deactivate", message: "Vous ne pouvez pas désactiver votre propre compte." });
     }
 
-    const result = await withOrgContext(req.auth!.organizationId, (tx) =>
-      tx.user.updateMany({
+    const result = await withOrgContext(req.auth!.organizationId, async (tx) => {
+      const updated = await tx.user.updateMany({
         where: {
           id: req.params.id,
           organizationId: req.auth!.organizationId,
           role: { not: "owner_viewer" },
         },
         data: parsed.data,
-      })
-    );
+      });
+      if (updated.count > 0) {
+        await logActivity(tx, {
+          organizationId: req.auth!.organizationId,
+          userId: req.auth!.userId,
+          action: "update",
+          entityType: "user",
+          entityId: req.params.id,
+          metadata: parsed.data,
+        });
+      }
+      return updated;
+    });
     if (result.count === 0) {
       return res.status(404).json({ code: "not_found", message: "Utilisateur introuvable." });
     }

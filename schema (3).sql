@@ -102,6 +102,7 @@ CREATE TABLE units (
   area_sqm         numeric(8,2),
   description      text,
   rent_amount      numeric(14,2) NOT NULL,
+  currency         varchar(3) NOT NULL DEFAULT 'GNF',  -- correction Partie 4.2 v3.0 : devise par ligne, pas seulement sur les tables SaaS
   deposit_amount   numeric(14,2),
   status           varchar(20) NOT NULL DEFAULT 'available'
                      CHECK (status IN ('available','reserved','occupied','maintenance','out_of_service')),
@@ -190,6 +191,7 @@ CREATE TABLE contracts (
   start_date         date NOT NULL,
   end_date           date,
   rent_amount        numeric(14,2) NOT NULL,
+  currency           varchar(3) NOT NULL DEFAULT 'GNF',
   deposit_amount     numeric(14,2),
   payment_frequency  varchar(20) NOT NULL DEFAULT 'monthly'
                        CHECK (payment_frequency IN ('monthly','quarterly','semiannual','annual','custom')),
@@ -197,6 +199,7 @@ CREATE TABLE contracts (
   terms              text,
   status             varchar(20) NOT NULL DEFAULT 'active'
                        CHECK (status IN ('draft','active','suspended','terminated','expired')),
+  termination_reason varchar(50),  -- posé à la résiliation, validé contre organization_settings.termination_reasons
   created_at         timestamptz NOT NULL DEFAULT now(),
   updated_at         timestamptz NOT NULL DEFAULT now()
 );
@@ -289,6 +292,7 @@ CREATE TABLE invoices (
   period_start     date NOT NULL,
   period_end       date NOT NULL,
   amount           numeric(14,2) NOT NULL,
+  currency         varchar(3) NOT NULL DEFAULT 'GNF',
   late_fee_amount  numeric(14,2) NOT NULL DEFAULT 0,
   due_date         date NOT NULL,
   status           varchar(20) NOT NULL DEFAULT 'pending'
@@ -315,6 +319,7 @@ CREATE TABLE payments (
   invoice_id       uuid NOT NULL REFERENCES invoices(id),
   contract_id      uuid NOT NULL REFERENCES contracts(id),
   amount           numeric(14,2) NOT NULL,
+  currency         varchar(3) NOT NULL DEFAULT 'GNF',
   payment_date     timestamptz NOT NULL DEFAULT now(),
   payment_method   varchar(30) NOT NULL,   -- especes, orange_money, mtn_momo, virement, carte, autre
   reference        varchar(100),
@@ -451,6 +456,7 @@ CREATE TABLE expenses (
   unit_id          uuid REFERENCES units(id),
   category         varchar(50) NOT NULL,
   amount           numeric(14,2) NOT NULL,
+  currency         varchar(3) NOT NULL DEFAULT 'GNF',
   expense_date     date NOT NULL,
   description      text,
   receipt_url      text,
@@ -468,7 +474,8 @@ CREATE TABLE documents (
   organization_id  uuid NOT NULL REFERENCES organizations(id),
   related_type     varchar(30) NOT NULL,   -- 'contract' | 'tenant' | 'expense' | 'maintenance_request' ...
   related_id       uuid NOT NULL,
-  file_url         text NOT NULL,
+  file_name        varchar(255) NOT NULL,  -- nom d'origine à l'upload, absent du modèle initial
+  file_url         text NOT NULL,          -- clé de stockage objet (pas une URL persistée : signée à la demande)
   file_type        varchar(30),
   uploaded_by      uuid REFERENCES users(id),
   created_at       timestamptz NOT NULL DEFAULT now()
@@ -513,6 +520,22 @@ CREATE TABLE activity_logs (
   created_at       timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_activity_logs_organization_id ON activity_logs(organization_id, created_at DESC);
+
+-- Conformité légale locale (A12) : préavis, plafond de caution, motifs de
+-- résiliation — valeurs par défaut à valider avec un juriste guinéen avant
+-- la mise en production, et TOUJOURS configurables par organisation plutôt
+-- que codées en dur (cf. cahier des charges, Partie 6). Une seule ligne par
+-- organisation ; absente = valeurs par défaut appliquées côté application
+-- (api/src/routes/settings.ts), pas de backfill nécessaire.
+CREATE TABLE organization_settings (
+  organization_id      uuid PRIMARY KEY REFERENCES organizations(id),
+  notice_period_days   integer NOT NULL DEFAULT 90,
+  deposit_cap_months   numeric(4,2),  -- NULL = aucun plafond appliqué
+  termination_reasons  jsonb NOT NULL DEFAULT '["impaye","faute_grave","vente_bien","reprise_proprietaire","fin_de_contrat","autre"]',
+  updated_at           timestamptz NOT NULL DEFAULT now()
+);
+CREATE TRIGGER trg_organization_settings_updated_at BEFORE UPDATE ON organization_settings
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ============================================================
 -- 8. MODÈLE SAAS : ABONNEMENTS, FACTURATION PLATEFORME, PAIEMENTS MOBILES
@@ -710,6 +733,25 @@ CREATE POLICY tenant_isolation ON support_tickets
 
 ALTER TABLE late_fee_rules ENABLE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON late_fee_rules
+  USING (organization_id = current_org_id());
+
+-- Journal d'activité : écriture seule, jamais modifiable ni supprimable
+-- (cf. module Gouvernance, Partie 1) — comme owners avant correction, cette
+-- table portait organization_id sans policy RLS, ce qui aurait permis à une
+-- requête applicative mal filtrée d'exposer le journal d'une autre agence.
+ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON activity_logs
+  USING (organization_id = current_org_id());
+
+-- Documents (contrats, pièces d'identité, reçus, justificatifs, photos —
+-- jamais stockés en base, stockage objet) : même trou que owners/
+-- activity_logs avant correction, organization_id sans policy RLS.
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON documents
+  USING (organization_id = current_org_id());
+
+ALTER TABLE organization_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON organization_settings
   USING (organization_id = current_org_id());
 
 -- organization_id NULL = moyen de paiement global, visible par toutes les

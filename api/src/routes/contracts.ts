@@ -4,6 +4,8 @@ import { requireRole } from "../middleware/auth";
 import { withOrgContext } from "../lib/withOrgContext";
 import { asyncHandler } from "../lib/asyncHandler";
 import { parsePagination, paginate } from "../lib/pagination";
+import { logActivity } from "../lib/activityLog";
+import { getLegalSettings } from "../lib/legalSettings";
 
 export const contractsRouter = Router();
 
@@ -26,6 +28,9 @@ const updateContractSchema = z.object({
   status: z.enum(CONTRACT_STATUSES).optional(),
   endDate: z.string().optional(),
   terms: z.string().optional(),
+  // Requis uniquement quand status passe à "terminated" (validé plus bas
+  // contre organization_settings.termination_reasons, A12).
+  terminationReason: z.string().optional(),
 });
 
 const contractInclude = {
@@ -84,6 +89,20 @@ contractsRouter.post(
       const tenant = await tx.tenant.findFirst({ where: { id: rest.tenantId, deletedAt: null } });
       if (!tenant) return { error: "tenant_not_found" as const };
 
+      // Plafond légal de caution (A12) : jamais codé en dur, lu depuis
+      // organization_settings à chaque création — une organisation qui
+      // n'a pas configuré de plafond (NULL) n'est pas bloquée.
+      const legal = await getLegalSettings(tx, req.auth!.organizationId);
+      if (legal.depositCapMonths && rest.depositAmount) {
+        const cap = rest.rentAmount * legal.depositCapMonths;
+        if (rest.depositAmount > cap) {
+          return {
+            error: "deposit_exceeds_cap" as const,
+            cap,
+          };
+        }
+      }
+
       const contract = await tx.contract.create({
         data: {
           organizationId: req.auth!.organizationId,
@@ -96,10 +115,26 @@ contractsRouter.post(
 
       await tx.unit.update({ where: { id: rest.unitId }, data: { status: "occupied" } });
 
+      await logActivity(tx, {
+        organizationId: req.auth!.organizationId,
+        userId: req.auth!.userId,
+        action: "create",
+        entityType: "contract",
+        entityId: contract.id,
+        metadata: { unitId: rest.unitId, tenantId: rest.tenantId },
+      });
+
       return { contract };
     });
 
     if ("error" in result) {
+      if (result.error === "deposit_exceeds_cap") {
+        const cap = Math.round(result.cap).toLocaleString("fr-FR");
+        return res.status(400).json({
+          code: result.error,
+          message: `La caution dépasse le plafond légal configuré (${cap} GNF max).`,
+        });
+      }
       if (result.error === "unit_not_found") {
         return res.status(404).json({ code: result.error, message: "Local introuvable." });
       }
@@ -142,9 +177,25 @@ contractsRouter.patch(
     }
     const { endDate, ...rest } = parsed.data;
 
+    // Motif de résiliation (A12) : requis dès qu'on passe à "terminated",
+    // et doit être l'un des motifs configurés par l'organisation — jamais
+    // une liste codée en dur dans la validation elle-même.
+    if (rest.status === "terminated" && !rest.terminationReason) {
+      return res
+        .status(400)
+        .json({ code: "termination_reason_required", message: "Un motif de résiliation est requis." });
+    }
+
     const result = await withOrgContext(req.auth!.organizationId, async (tx) => {
       const contract = await tx.contract.findFirst({ where: { id: req.params.id } });
       if (!contract) return null;
+
+      if (rest.status === "terminated") {
+        const legal = await getLegalSettings(tx, req.auth!.organizationId);
+        if (!legal.terminationReasons.includes(rest.terminationReason!)) {
+          return { error: "invalid_termination_reason" as const, allowed: legal.terminationReasons };
+        }
+      }
 
       const updated = await tx.contract.update({
         where: { id: req.params.id },
@@ -157,11 +208,26 @@ contractsRouter.patch(
         await tx.unit.update({ where: { id: contract.unitId }, data: { status: "available" } });
       }
 
+      await logActivity(tx, {
+        organizationId: req.auth!.organizationId,
+        userId: req.auth!.userId,
+        action: "update",
+        entityType: "contract",
+        entityId: req.params.id,
+        metadata: rest,
+      });
+
       return updated;
     });
 
     if (!result) {
       return res.status(404).json({ code: "not_found", message: "Contrat introuvable." });
+    }
+    if ("error" in result) {
+      return res.status(400).json({
+        code: result.error,
+        message: `Motif de résiliation invalide. Motifs configurés : ${result.allowed.join(", ")}.`,
+      });
     }
     res.json(result);
   })
@@ -197,9 +263,18 @@ contractGuarantorsRouter.post(
       // autre organisation renvoie null, jamais une fuite de données.
       const contract = await tx.contract.findFirst({ where: { id: req.params.contractId } });
       if (!contract) return null;
-      return tx.guarantor.create({
+      const guarantor = await tx.guarantor.create({
         data: { contractId: req.params.contractId, ...parsed.data },
       });
+      await logActivity(tx, {
+        organizationId: req.auth!.organizationId,
+        userId: req.auth!.userId,
+        action: "create",
+        entityType: "guarantor",
+        entityId: guarantor.id,
+        metadata: { contractId: req.params.contractId, fullName: guarantor.fullName },
+      });
+      return guarantor;
     });
 
     if (!guarantor) {

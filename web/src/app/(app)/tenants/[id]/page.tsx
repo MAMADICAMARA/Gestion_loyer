@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { getTenant, type Tenant } from "@/lib/api";
+import { DocumentsPanel } from "@/components/DocumentsPanel";
 
 function Row({ label, value }: { label: string; value: string | null | undefined }) {
   return (
@@ -62,10 +63,8 @@ export default function TenantDetailPage() {
         </div>
       </div>
 
-      <div className="mt-4 rounded-xl border border-dashed border-line bg-white p-5 text-sm text-sub">
-        Le contrat, l&apos;historique des paiements et les documents de ce
-        locataire apparaîtront ici une fois les Phases 3 et 4 de la feuille de
-        route (Contrats, Facturation &amp; Paiements) construites.
+      <div className="mt-4">
+        <DocumentsPanel relatedType="tenant" relatedId={tenant.id} />
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { withOrgContext } from "../lib/withOrgContext";
 import { asyncHandler } from "../lib/asyncHandler";
 import { addPeriod, recalculateInvoice } from "../lib/invoiceLogic";
 import { parsePagination, paginate } from "../lib/pagination";
+import { logActivity } from "../lib/activityLog";
 
 // GET /api/invoices — toutes les factures de l'organisation (module Facturation).
 export const invoicesRouter = Router();
@@ -103,6 +104,14 @@ contractInvoicesRouter.post(
           amount: contract.rentAmount,
           dueDate,
         },
+      });
+      await logActivity(tx, {
+        organizationId: req.auth!.organizationId,
+        userId: req.auth!.userId,
+        action: "create",
+        entityType: "invoice",
+        entityId: invoice.id,
+        metadata: { contractId: contract.id, amount: invoice.amount.toString() },
       });
       return { invoice };
     });

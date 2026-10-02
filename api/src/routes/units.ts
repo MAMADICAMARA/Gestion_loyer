@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireRole } from "../middleware/auth";
 import { withOrgContext } from "../lib/withOrgContext";
 import { asyncHandler } from "../lib/asyncHandler";
+import { logActivity } from "../lib/activityLog";
 
 const createUnitSchema = z.object({
   number: z.string().min(1),
@@ -55,7 +56,7 @@ propertyUnitsRouter.post(
       });
       if (!property) return null;
 
-      return tx.unit.create({
+      const unit = await tx.unit.create({
         data: {
           // organization_id est de toute façon réécrit par le trigger
           // sync_unit_organization_id (dérivé de property_id) — voir schema.sql §2.
@@ -64,6 +65,15 @@ propertyUnitsRouter.post(
           ...parsed.data,
         },
       });
+      await logActivity(tx, {
+        organizationId: req.auth!.organizationId,
+        userId: req.auth!.userId,
+        action: "create",
+        entityType: "unit",
+        entityId: unit.id,
+        metadata: { propertyId: req.params.propertyId, number: unit.number },
+      });
+      return unit;
     });
 
     if (!unit) {
@@ -85,12 +95,23 @@ unitsRouter.patch(
       return res.status(400).json({ code: "invalid_input", message: "Champs de local invalides." });
     }
 
-    const result = await withOrgContext(req.auth!.organizationId, (tx) =>
-      tx.unit.updateMany({
+    const result = await withOrgContext(req.auth!.organizationId, async (tx) => {
+      const updated = await tx.unit.updateMany({
         where: { id: req.params.id, deletedAt: null },
         data: parsed.data,
-      })
-    );
+      });
+      if (updated.count > 0) {
+        await logActivity(tx, {
+          organizationId: req.auth!.organizationId,
+          userId: req.auth!.userId,
+          action: "update",
+          entityType: "unit",
+          entityId: req.params.id,
+          metadata: parsed.data,
+        });
+      }
+      return updated;
+    });
 
     if (result.count === 0) {
       return res.status(404).json({ code: "not_found", message: "Local introuvable." });
@@ -103,12 +124,22 @@ unitsRouter.delete(
   "/:id",
   requireRole("owner", "admin", "manager"),
   asyncHandler(async (req, res) => {
-    const result = await withOrgContext(req.auth!.organizationId, (tx) =>
-      tx.unit.updateMany({
+    const result = await withOrgContext(req.auth!.organizationId, async (tx) => {
+      const deleted = await tx.unit.updateMany({
         where: { id: req.params.id, deletedAt: null },
         data: { deletedAt: new Date() },
-      })
-    );
+      });
+      if (deleted.count > 0) {
+        await logActivity(tx, {
+          organizationId: req.auth!.organizationId,
+          userId: req.auth!.userId,
+          action: "delete",
+          entityType: "unit",
+          entityId: req.params.id,
+        });
+      }
+      return deleted;
+    });
 
     if (result.count === 0) {
       return res.status(404).json({ code: "not_found", message: "Local introuvable." });
