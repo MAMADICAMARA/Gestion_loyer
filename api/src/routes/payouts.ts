@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireRole } from "../middleware/auth";
 import { withOrgContext } from "../lib/withOrgContext";
 import { asyncHandler } from "../lib/asyncHandler";
+import { logActivity } from "../lib/activityLog";
 
 type OwnerParams = { id: string };
 export const ownerPayoutsRouter = Router({ mergeParams: true });
@@ -89,15 +90,24 @@ ownerPayoutsRouter.post(
         netAmount,
       };
 
-      if (existing) {
-        if (existing.status === "paid") return { error: "already_paid" as const };
-        return { payout: await tx.ownerPayout.update({ where: { id: existing.id }, data }) };
-      }
-      return {
-        payout: await tx.ownerPayout.create({
-          data: { organizationId: req.auth!.organizationId, ownerId: owner.id, ...data },
-        }),
-      };
+      if (existing && existing.status === "paid") return { error: "already_paid" as const };
+
+      const payout = existing
+        ? await tx.ownerPayout.update({ where: { id: existing.id }, data })
+        : await tx.ownerPayout.create({
+            data: { organizationId: req.auth!.organizationId, ownerId: owner.id, ...data },
+          });
+
+      await logActivity(tx, {
+        organizationId: req.auth!.organizationId,
+        userId: req.auth!.userId,
+        action: existing ? "update" : "create",
+        entityType: "owner_payout",
+        entityId: payout.id,
+        metadata: { ownerId: owner.id, netAmount: payout.netAmount.toString() },
+      });
+
+      return { payout };
     });
 
     if (!result) return res.status(404).json({ code: "not_found", message: "Propriétaire introuvable." });
@@ -117,12 +127,23 @@ payoutsRouter.patch(
   "/:id",
   requireRole("owner", "admin", "manager"),
   asyncHandler(async (req, res) => {
-    const result = await withOrgContext(req.auth!.organizationId, (tx) =>
-      tx.ownerPayout.updateMany({
+    const result = await withOrgContext(req.auth!.organizationId, async (tx) => {
+      const updated = await tx.ownerPayout.updateMany({
         where: { id: req.params.id, status: "pending" },
         data: { status: "paid", paidAt: new Date() },
-      })
-    );
+      });
+      if (updated.count > 0) {
+        await logActivity(tx, {
+          organizationId: req.auth!.organizationId,
+          userId: req.auth!.userId,
+          action: "update",
+          entityType: "owner_payout",
+          entityId: req.params.id,
+          metadata: { status: "paid" },
+        });
+      }
+      return updated;
+    });
     if (result.count === 0) {
       return res.status(404).json({ code: "not_found", message: "Versement introuvable ou déjà payé." });
     }

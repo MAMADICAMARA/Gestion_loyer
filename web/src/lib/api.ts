@@ -461,6 +461,22 @@ export function getTenant(id: string) {
   return apiFetch<Tenant>(`/api/tenants/${id}`);
 }
 
+export type ActivityAction = "create" | "update" | "delete";
+
+export interface ActivityLog {
+  id: string;
+  action: ActivityAction;
+  entityType: string;
+  entityId: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  user: { email: string } | null;
+}
+
+export function listActivityLogs(params?: PageParams) {
+  return apiFetch<Paginated<ActivityLog>>(`/api/activity-logs${pageQuery(params)}`);
+}
+
 export function createUnit(
   propertyId: string,
   data: {

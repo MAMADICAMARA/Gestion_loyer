@@ -717,6 +717,14 @@ ALTER TABLE late_fee_rules ENABLE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON late_fee_rules
   USING (organization_id = current_org_id());
 
+-- Journal d'activité : écriture seule, jamais modifiable ni supprimable
+-- (cf. module Gouvernance, Partie 1) — comme owners avant correction, cette
+-- table portait organization_id sans policy RLS, ce qui aurait permis à une
+-- requête applicative mal filtrée d'exposer le journal d'une autre agence.
+ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON activity_logs
+  USING (organization_id = current_org_id());
+
 -- organization_id NULL = moyen de paiement global, visible par toutes les
 -- organisations (cf. définition de la table plus haut).
 ALTER TABLE payment_methods ENABLE ROW LEVEL SECURITY;

@@ -9,6 +9,7 @@ import {
   BriefcaseIcon,
   BuildingIcon,
   CardIcon,
+  ClockIcon,
   CloseIcon,
   FileIcon,
   GridIcon,
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   // Visible seulement owner/admin (matrice de permissions, Partie 2) —
   // l'API le bloque de toute façon, ceci n'est qu'un confort de navigation.
   { href: "/users", label: "Équipe", icon: UserCogIcon, roles: ["owner", "admin"] },
+  { href: "/journal", label: "Journal d'activité", icon: ClockIcon, roles: ["owner", "admin"] },
 ];
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {

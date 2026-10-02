@@ -4,6 +4,7 @@ import { requireRole } from "../middleware/auth";
 import { withOrgContext } from "../lib/withOrgContext";
 import { asyncHandler } from "../lib/asyncHandler";
 import { parsePagination, paginate } from "../lib/pagination";
+import { logActivity } from "../lib/activityLog";
 
 export const contractsRouter = Router();
 
@@ -96,6 +97,15 @@ contractsRouter.post(
 
       await tx.unit.update({ where: { id: rest.unitId }, data: { status: "occupied" } });
 
+      await logActivity(tx, {
+        organizationId: req.auth!.organizationId,
+        userId: req.auth!.userId,
+        action: "create",
+        entityType: "contract",
+        entityId: contract.id,
+        metadata: { unitId: rest.unitId, tenantId: rest.tenantId },
+      });
+
       return { contract };
     });
 
@@ -157,6 +167,15 @@ contractsRouter.patch(
         await tx.unit.update({ where: { id: contract.unitId }, data: { status: "available" } });
       }
 
+      await logActivity(tx, {
+        organizationId: req.auth!.organizationId,
+        userId: req.auth!.userId,
+        action: "update",
+        entityType: "contract",
+        entityId: req.params.id,
+        metadata: rest,
+      });
+
       return updated;
     });
 
@@ -197,9 +216,18 @@ contractGuarantorsRouter.post(
       // autre organisation renvoie null, jamais une fuite de données.
       const contract = await tx.contract.findFirst({ where: { id: req.params.contractId } });
       if (!contract) return null;
-      return tx.guarantor.create({
+      const guarantor = await tx.guarantor.create({
         data: { contractId: req.params.contractId, ...parsed.data },
       });
+      await logActivity(tx, {
+        organizationId: req.auth!.organizationId,
+        userId: req.auth!.userId,
+        action: "create",
+        entityType: "guarantor",
+        entityId: guarantor.id,
+        metadata: { contractId: req.params.contractId, fullName: guarantor.fullName },
+      });
+      return guarantor;
     });
 
     if (!guarantor) {

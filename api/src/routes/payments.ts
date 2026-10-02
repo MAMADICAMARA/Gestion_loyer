@@ -6,6 +6,7 @@ import { withOrgContext } from "../lib/withOrgContext";
 import { asyncHandler } from "../lib/asyncHandler";
 import { recalculateInvoice } from "../lib/invoiceLogic";
 import { renderReceiptPdf } from "../lib/receiptPdf";
+import { logActivity } from "../lib/activityLog";
 
 type InvoiceParams = { invoiceId: string };
 type PaymentParams = InvoiceParams & { paymentId: string };
@@ -47,7 +48,7 @@ invoicePaymentsRouter.post(
         return { error: "reference_required" as const };
       }
 
-      await tx.payment.create({
+      const payment = await tx.payment.create({
         data: {
           organizationId: req.auth!.organizationId,
           invoiceId: invoice.id,
@@ -57,6 +58,15 @@ invoicePaymentsRouter.post(
           reference: parsed.data.reference,
           recordedBy: req.auth!.userId,
         },
+      });
+
+      await logActivity(tx, {
+        organizationId: req.auth!.organizationId,
+        userId: req.auth!.userId,
+        action: "create",
+        entityType: "payment",
+        entityId: payment.id,
+        metadata: { invoiceId: invoice.id, amount: payment.amount.toString(), paymentMethod: payment.paymentMethod },
       });
 
       return { invoice: await recalculateInvoice(tx, invoice.id) };

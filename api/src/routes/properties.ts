@@ -4,6 +4,7 @@ import { requireRole } from "../middleware/auth";
 import { withOrgContext } from "../lib/withOrgContext";
 import { asyncHandler } from "../lib/asyncHandler";
 import { parsePagination, paginate } from "../lib/pagination";
+import { logActivity } from "../lib/activityLog";
 
 export const propertiesRouter = Router();
 
@@ -66,14 +67,23 @@ propertiesRouter.post(
       return res.status(400).json({ code: "invalid_input", message: "Champs de propriété invalides." });
     }
 
-    const property = await withOrgContext(req.auth!.organizationId, (tx) =>
-      tx.property.create({
+    const property = await withOrgContext(req.auth!.organizationId, async (tx) => {
+      const created = await tx.property.create({
         data: {
           organizationId: req.auth!.organizationId,
           ...parsed.data,
         },
-      })
-    );
+      });
+      await logActivity(tx, {
+        organizationId: req.auth!.organizationId,
+        userId: req.auth!.userId,
+        action: "create",
+        entityType: "property",
+        entityId: created.id,
+        metadata: { name: created.name },
+      });
+      return created;
+    });
     res.status(201).json(property);
   })
 );
@@ -109,12 +119,23 @@ propertiesRouter.patch(
       return res.status(400).json({ code: "invalid_input", message: "Champs de propriété invalides." });
     }
 
-    const property = await withOrgContext(req.auth!.organizationId, (tx) =>
-      tx.property.updateMany({
+    const property = await withOrgContext(req.auth!.organizationId, async (tx) => {
+      const result = await tx.property.updateMany({
         where: { id: req.params.id, deletedAt: null },
         data: parsed.data,
-      })
-    );
+      });
+      if (result.count > 0) {
+        await logActivity(tx, {
+          organizationId: req.auth!.organizationId,
+          userId: req.auth!.userId,
+          action: "update",
+          entityType: "property",
+          entityId: req.params.id,
+          metadata: parsed.data,
+        });
+      }
+      return result;
+    });
 
     if (property.count === 0) {
       return res.status(404).json({ code: "not_found", message: "Propriété introuvable." });
@@ -128,12 +149,22 @@ propertiesRouter.delete(
   "/:id",
   requireRole("owner", "admin", "manager"),
   asyncHandler(async (req, res) => {
-    const result = await withOrgContext(req.auth!.organizationId, (tx) =>
-      tx.property.updateMany({
+    const result = await withOrgContext(req.auth!.organizationId, async (tx) => {
+      const deleted = await tx.property.updateMany({
         where: { id: req.params.id, deletedAt: null },
         data: { deletedAt: new Date() },
-      })
-    );
+      });
+      if (deleted.count > 0) {
+        await logActivity(tx, {
+          organizationId: req.auth!.organizationId,
+          userId: req.auth!.userId,
+          action: "delete",
+          entityType: "property",
+          entityId: req.params.id,
+        });
+      }
+      return deleted;
+    });
 
     if (result.count === 0) {
       return res.status(404).json({ code: "not_found", message: "Propriété introuvable." });

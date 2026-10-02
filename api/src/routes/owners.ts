@@ -5,6 +5,7 @@ import { requireRole } from "../middleware/auth";
 import { withOrgContext } from "../lib/withOrgContext";
 import { asyncHandler } from "../lib/asyncHandler";
 import { parsePagination, paginate } from "../lib/pagination";
+import { logActivity } from "../lib/activityLog";
 
 export const ownersRouter = Router();
 
@@ -39,16 +40,25 @@ ownersRouter.post(
       return res.status(400).json({ code: "invalid_input", message: "Nom du propriétaire requis." });
     }
 
-    const owner = await withOrgContext(req.auth!.organizationId, (tx) =>
-      tx.owner.create({
+    const owner = await withOrgContext(req.auth!.organizationId, async (tx) => {
+      const created = await tx.owner.create({
         data: {
           organizationId: req.auth!.organizationId,
           fullName: parsed.data.fullName,
           phone: parsed.data.phone,
           email: parsed.data.email,
         },
-      })
-    );
+      });
+      await logActivity(tx, {
+        organizationId: req.auth!.organizationId,
+        userId: req.auth!.userId,
+        action: "create",
+        entityType: "owner",
+        entityId: created.id,
+        metadata: { fullName: created.fullName },
+      });
+      return created;
+    });
     res.status(201).json(owner);
   })
 );
@@ -100,23 +110,31 @@ ownersRouter.patch(
         where: { ownerId: owner.id, propertyId: null },
       });
 
-      if (existing) {
-        return tx.agencyCommissionRule.update({
-          where: { id: existing.id },
-          data: {
-            ratePercentage: parsed.data.ratePercentage,
-            calculationBase: parsed.data.calculationBase ?? existing.calculationBase,
-          },
-        });
-      }
-      return tx.agencyCommissionRule.create({
-        data: {
-          organizationId: req.auth!.organizationId,
-          ownerId: owner.id,
-          ratePercentage: parsed.data.ratePercentage,
-          calculationBase: parsed.data.calculationBase ?? "gross",
-        },
+      const rule = existing
+        ? await tx.agencyCommissionRule.update({
+            where: { id: existing.id },
+            data: {
+              ratePercentage: parsed.data.ratePercentage,
+              calculationBase: parsed.data.calculationBase ?? existing.calculationBase,
+            },
+          })
+        : await tx.agencyCommissionRule.create({
+            data: {
+              organizationId: req.auth!.organizationId,
+              ownerId: owner.id,
+              ratePercentage: parsed.data.ratePercentage,
+              calculationBase: parsed.data.calculationBase ?? "gross",
+            },
+          });
+      await logActivity(tx, {
+        organizationId: req.auth!.organizationId,
+        userId: req.auth!.userId,
+        action: existing ? "update" : "create",
+        entityType: "commission_rule",
+        entityId: rule.id,
+        metadata: { ownerId: owner.id, ratePercentage: rule.ratePercentage.toString() },
       });
+      return rule;
     });
 
     if (!result) return res.status(404).json({ code: "not_found", message: "Propriétaire introuvable." });
@@ -158,6 +176,14 @@ ownersRouter.post(
         },
       });
       await tx.owner.update({ where: { id: owner.id }, data: { userId: user.id } });
+      await logActivity(tx, {
+        organizationId: req.auth!.organizationId,
+        userId: req.auth!.userId,
+        action: "create",
+        entityType: "portal_access",
+        entityId: user.id,
+        metadata: { ownerId: owner.id, email: user.email },
+      });
       return { user };
     });
 
